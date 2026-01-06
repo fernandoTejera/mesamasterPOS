@@ -1,0 +1,184 @@
+:root{
+  --bg: #f5f7fb;
+  --card: #ffffff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --border: rgba(15, 23, 42, .12);
+  --input: #ffffff;
+
+  --blue: #2563eb;
+  --blue-2: #1d4ed8;
+  --focus: rgba(37, 99, 235, .22);
+}
+
+.loginPage{
+  position: fixed;  /* <- esto es la clave */
+  inset: 0;         /* top:0 right:0 bottom:0 left:0 */
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 24px;
+  overflow: hidden; /* <- y esto remata el scroll */
+  background:
+    radial-gradient(900px 500px at 20% 0%, rgba(37,99,235,.12), transparent 60%),
+    radial-gradient(700px 400px at 85% 25%, rgba(37,99,235,.08), transparent 55%),
+    var(--bg);
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+.loginCard{
+  width: 100%;
+  max-width: 420px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 14px 40px rgba(15,23,42,.10); /* sombra suave */
+}
+
+.brandRow{
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.logoBox{
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: rgba(37,99,235,.10);
+  border: 1px solid rgba(37,99,235,.18);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex: 0 0 auto;
+}
+
+.logoImg{
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.brandName{
+  margin:0;
+  font-size: 18px;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.subtitle{
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.form{
+  display:flex;
+  flex-direction:column;
+  gap: 12px;
+}
+
+.field{
+  display:flex;
+  flex-direction:column;
+}
+
+.label{
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+
+/* Wrapper para icono + input */
+.inputWrapper{
+  position: relative;
+  width: 100%;
+}
+
+.inputIcon{
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: rgba(100,116,139,.9);
+  pointer-events: none;
+}
+
+.input{
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(15,23,42,.14);
+  background: var(--input);
+  color: var(--text);
+  outline: none;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.input.withIcon{
+  padding-left: 42px; /* espacio para el icono */
+}
+
+.input::placeholder{
+  color: rgba(100,116,139,.75);
+}
+
+.input:focus{
+  border-color: rgba(37,99,235,.75);
+  box-shadow: 0 0 0 4px var(--focus);
+}
+
+/* link */
+.row{
+  display:flex;
+  justify-content:flex-end;
+  margin-top: 2px;
+}
+
+.link{
+  background: transparent;
+  border: 0;
+  color: var(--blue);
+  padding: 0;
+  font-size: 13px;
+  cursor: pointer;
+}
+.link:hover{
+  text-decoration: underline;
+}
+
+/* botón (menos brillo) */
+.button{
+  margin-top: 6px;
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(37,99,235,.25);
+  background: linear-gradient(180deg, var(--blue), var(--blue-2));
+  color: white;
+  font-weight: 800;
+  cursor: pointer;
+  font-size: 14px;
+  box-shadow: 0 8px 18px rgba(37,99,235,.18); /* más sutil */
+}
+
+.button:hover{
+  filter: brightness(1.02);
+}
+
+.button:active{
+  transform: translateY(1px);
+}
+
+.help{
+  margin-top: 14px;
+  color: rgba(100,116,139,.9);
+  font-size: 12px;
+  text-align:center;
+}

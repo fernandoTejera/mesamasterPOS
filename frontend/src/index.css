@@ -1,0 +1,18 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;           /* bloquea scroll del documento */
+  overscroll-behavior: none;  /* evita "rebote" */
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;           /* bloquea scroll del root */
+}
+  
