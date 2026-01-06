@@ -32,7 +32,7 @@ export default function Login() {
                 id="email"
                 className="input withIcon"
                 type="email"
-                placeholder="ej: mesero@restaurant.com"
+                placeholder="Correo electrónico"
                 autoComplete="email"
                 required
               />
@@ -48,7 +48,7 @@ export default function Login() {
                 id="password"
                 className="input withIcon"
                 type="password"
-                placeholder="Introduce tu contraseña"
+                placeholder="Contraseña"
                 autoComplete="current-password"
                 required
               />
