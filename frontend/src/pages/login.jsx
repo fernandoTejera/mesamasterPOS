@@ -1,13 +1,14 @@
 import "./login.css";
 import { FaUser, FaLock } from "react-icons/fa";
 import logo from "../assets/logo.png";
+import { useNavigate } from "react-router-dom";
 
 export default function Login() {
+  const navigate = useNavigate();
   function handleSubmit(e) {
     e.preventDefault();
-    alert("Login (solo UI por ahora)");
+    navigate("/mesas"); // temporal, luego irá al backend
   }
-
   return (
     <div className="loginPage">
       <div className="loginCard">
@@ -24,7 +25,9 @@ export default function Login() {
 
         <form className="form" onSubmit={handleSubmit}>
           <div className="field">
-            <label className="label" htmlFor="email">Correo electrónico</label>
+            <label className="label" htmlFor="email">
+              Correo electrónico
+            </label>
 
             <div className="inputWrapper">
               <FaUser className="inputIcon" />
@@ -40,7 +43,9 @@ export default function Login() {
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="password">Contraseña</label>
+            <label className="label" htmlFor="password">
+              Contraseña
+            </label>
 
             <div className="inputWrapper">
               <FaLock className="inputIcon" />
@@ -61,7 +66,9 @@ export default function Login() {
             </button>
           </div>
 
-          <button className="button" type="submit">Iniciar sesión</button>
+          <button className="button" type="submit">
+            Iniciar sesión
+          </button>
 
           <p className="help">
             Consejo: usa credenciales de prueba cuando conectemos el backend.
