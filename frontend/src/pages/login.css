@@ -182,3 +182,10 @@
   font-size: 12px;
   text-align:center;
 }
+
+.error {
+  margin-top: 10px;
+  text-align: center;
+  color: #d32f2f;
+}
+
