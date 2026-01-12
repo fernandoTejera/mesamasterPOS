@@ -1,9 +1,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-
 import Login from "./pages/login";
-import Mesas from "./pages/mesas";
-import Cocina from "./pages/cocina";
-import Gerente from "./pages/gerente";
+import RoleRoute from "./auth/RoleRoute";
+import Mesas from "./pages/Mesas";
+import Cocina from "./pages/Cocina";
+import Gerente from "./pages/Gerente";
+
 
 export default function App() {
   return (
@@ -13,12 +14,37 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
-        <Route path="/mesas" element={<Mesas/>} />
-        <Route path="/cocina" element={<Cocina/>} />
-        <Route path="/gerente" element={<Gerente/>} />
+        <Route
+          path="/mesas"
+          element={
+            <RoleRoute allow={["mesero"]}>
+              <Mesas />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/cocina"
+          element={
+            <RoleRoute allow={["cocina"]}>
+              <Cocina />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/gerente"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <Gerente />
+            </RoleRoute>
+          }
+        />
 
         {/* Ruta no encontrada */}
-        <Route path="*" element ={<h1 style={{padding: 24}}>404 - No econtrado</h1> }/>
+        <Route
+          path="*"
+          element={<h1 style={{ padding: 24 }}>404 - No econtrado</h1>}
+        />
       </Routes>
     </BrowserRouter>
   );
