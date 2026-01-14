@@ -1,0 +1,137 @@
+/* Fondo general tipo app */
+.mesasPage {
+  min-height: calc(100vh - 0px);
+  background: #f6f8fc;
+  padding: 24px 16px;
+}
+
+/* Contenedor centrado */
+.mesasContainer {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+/* Header tipo “app bar” */
+.mesasHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  background: white;
+  border: 1px solid #e6eaf2;
+  border-radius: 16px;
+
+  padding: 14px 16px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+/* Bloque título + subtítulo */
+.mesasTitleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mesasTitle {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  color: #101828;
+}
+
+.mesasSubtitle {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #667085;
+}
+
+/* Botón logout */
+.logoutBtn {
+  border: 1px solid #e6eaf2;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.logoutBtn:hover {
+  background: #f2f4f7;
+}
+
+/* Grid centrado y responsive */
+.mesasGrid {
+  margin-top: 16px;
+
+  display: grid;
+  gap: 14px;
+
+  /* Responsive real: columnas por tamaño de tarjeta */
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+}
+
+/* Tarjeta mesa */
+.tableCard {
+  border: 0;
+  border-radius: 16px;
+  padding: 14px;
+  min-height: 130px;
+  cursor: pointer;
+
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  text-align: center;
+
+  box-shadow: 0 14px 26px rgba(0, 0, 0, 0.12);
+  transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+}
+
+.tableCard:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.02);
+  box-shadow: 0 18px 30px rgba(0, 0, 0, 0.15);
+}
+
+.tableFree {
+  background: #22c55e;
+}
+
+.tableOccupied {
+  background: #ef4444;
+}
+
+.tableNumber {
+  font-weight: 900;
+  font-size: 16px;
+  margin-bottom: 6px;
+}
+
+.tableMeta {
+  font-size: 12px;
+  opacity: 0.95;
+  line-height: 1.25;
+}
+
+/* En pantallas muy grandes: tarjetas más grandes */
+@media (min-width: 1200px) {
+  .mesasGrid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .tableCard {
+    min-height: 120px;
+  }
+}
+@media (max-width: 520px) {
+  .mesasGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .tableCard {
+    min-height: 120px;
+  }
+}

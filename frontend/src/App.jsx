@@ -4,7 +4,7 @@ import RoleRoute from "./auth/RoleRoute";
 import Mesas from "./pages/Mesas";
 import Cocina from "./pages/Cocina";
 import Gerente from "./pages/Gerente";
-
+import MesaDetalle from "./pages/MesaDetalle";
 
 export default function App() {
   return (
@@ -14,6 +14,15 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
+        <Route
+          path="/mesas/:id"
+          element={
+            <RoleRoute allow={["mesero"]}>
+              <MesaDetalle />
+            </RoleRoute>
+          }
+        />
+
         <Route
           path="/mesas"
           element={

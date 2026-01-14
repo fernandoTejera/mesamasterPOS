@@ -1,0 +1,199 @@
+.detailPage {
+  height: 100dvh;            /* clave en móvil */
+  background: #f6f8fc;
+  padding: 16px;
+  overflow: hidden;          /* la página NO scrollea, scrollean los paneles */
+}
+
+.detailContainer {
+  height: 100%;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+  grid-template-rows: auto 1fr; /* top fijo + contenido ocupa el resto */
+}
+
+.detailTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+
+  background: white;
+  border: 1px solid #e6eaf2;
+  border-radius: 16px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+.detailTop h1 {
+  margin: 8px 0 0;
+  font-size: 20px;
+  font-weight: 900;
+  color: #101828;
+}
+
+.detailTop p {
+  margin: 6px 0 0;
+  color: #667085;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.topActions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn {
+  border: 1px solid #e6eaf2;
+  background: white;
+  border-radius: 12px;
+  padding: 10px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.btn:hover {
+  background: #f2f4f7;
+}
+
+.btnPrimary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background: #1d4ed8;
+}
+
+.contentGrid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  min-height: 0; /* CLAVE: permite que los hijos puedan scrollear */
+}
+.card {
+  background: white;
+  border: 1px solid #e6eaf2;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* CLAVE */
+}
+
+
+.cardTitle {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #101828;
+}
+
+.scrollArea {
+  overflow: auto;
+  padding-right: 6px;
+  min-height: 0;
+  flex: 1; /* CLAVE: se estira y activa scroll */
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid #eef2f7;
+  border-radius: 12px;
+  margin-bottom: 10px;
+}
+
+.itemName {
+  font-weight: 900;
+}
+
+.itemMeta {
+  color: #667085;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.qtyBox {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.qtyBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #e6eaf2;
+  background: white;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.totalRow {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #eef2f7;
+  display: flex;
+  justify-content: space-between;
+  font-weight: 900;
+}
+
+.productBtn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #eef2f7;
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+
+.productBtn:hover {
+  background: #f8fafc;
+}
+
+/* ✅ Scroll interno confiable en móvil */
+@media (max-width: 900px) {
+  .detailPage {
+    height: auto;        /* en móvil dejamos que la página pueda crecer */
+    min-height: 100dvh;  /* pero que mínimo ocupe la pantalla */
+    overflow: auto;      /* móvil: permite scroll normal de la página */
+  }
+
+  .detailContainer {
+    height: auto;        /* quitar height fija en móvil */
+    min-height: 100%;
+    grid-template-rows: auto auto; /* top + contenido */
+  }
+
+  .scrollArea {
+    max-height: 50dvh;             /* límite para que sí haga scroll */
+    -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+  }
+}
+
+@media (max-width: 520px) {
+  .detailTop {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topActions {
+    justify-content: stretch;
+  }
+
+  .topActions .btn {
+    width: 100%;
+  }
+}
+
