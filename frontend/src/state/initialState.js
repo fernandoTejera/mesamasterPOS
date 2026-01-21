@@ -8,6 +8,7 @@ export function createInitialState(tableCount = 12) {
   return {
     tableCount,
     tables,
-    orders: {}, // orderId -> { id, tableId, items: [{productId, qty}], createdAt, sentToKitchen }
+    orders: {},
+    sales: [], 
   };
 }

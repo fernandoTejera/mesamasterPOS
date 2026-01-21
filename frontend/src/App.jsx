@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import Caja from "./pages/Caja";
 import Login from "./pages/login";
 import RoleRoute from "./auth/RoleRoute";
 import Mesas from "./pages/Mesas";
@@ -39,7 +40,6 @@ export default function App() {
             </RoleRoute>
           }
         />
-
         <Route
           path="/gerente"
           element={
@@ -48,7 +48,14 @@ export default function App() {
             </RoleRoute>
           }
         />
-
+        <Route
+          path="/caja"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <Caja />
+            </RoleRoute>
+          }
+        />
         {/* Ruta no encontrada */}
         <Route
           path="*"
