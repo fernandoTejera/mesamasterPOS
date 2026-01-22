@@ -6,6 +6,8 @@ import Mesas from "./pages/Mesas";
 import Cocina from "./pages/Cocina";
 import Gerente from "./pages/Gerente";
 import MesaDetalle from "./pages/MesaDetalle";
+import Reportes from "./pages/Reportes";
+import Usuarios from "./pages/Usuarios";
 
 export default function App() {
   return (
@@ -53,6 +55,22 @@ export default function App() {
           element={
             <RoleRoute allow={["gerente"]}>
               <Caja />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/usuarios"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <Usuarios />
+            </RoleRoute>
+          }
+        />
+        <Route
+          path="/reportes"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <Reportes />
             </RoleRoute>
           }
         />

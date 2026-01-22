@@ -31,9 +31,7 @@ export default function Gerente() {
         }}
       >
         <h1 style={{ marginTop: 0 }}>Panel del Gerente</h1>
-        <p style={{ color: "#667085", marginTop: 6 }}>
-          Selecciona una opción.
-        </p>
+        <p style={{ color: "#667085", marginTop: 6 }}>Selecciona una opción.</p>
 
         <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
           <button
@@ -48,7 +46,7 @@ export default function Gerente() {
               cursor: "pointer",
             }}
           >
-            💵 Caja / Cobros
+            Caja / Cobros
           </button>
 
           <button
@@ -63,22 +61,34 @@ export default function Gerente() {
               cursor: "not-allowed",
             }}
           >
-            📦 Productos (próximamente)
+            Productos
           </button>
-
           <button
-            disabled
+            onClick={() => navigate("/usuarios")}
+            style={{
+              padding: 14,
+              borderRadius: 12,
+              border: "1px solid #e6eaf2",
+              background: "white",
+              fontWeight: 900,
+              cursor: "pointer",
+            }}
+          >
+            Usuarios
+          </button>
+          <button
+            onClick={() => navigate("/reportes")}
             style={{
               padding: 14,
               borderRadius: 12,
               border: "1px solid #e6eaf2",
               background: "#f2f4f7",
-              color: "#667085",
-              fontWeight: 800,
-              cursor: "not-allowed",
+              color: "#111827",
+              fontWeight: 900,
+              cursor: "pointer",
             }}
           >
-            📊 Reportes (próximamente)
+            Reportes
           </button>
         </div>
 

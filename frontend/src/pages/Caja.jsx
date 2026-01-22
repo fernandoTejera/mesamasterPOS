@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { loadState, saveState } from "../utils/storage";
 import { PRODUCTS } from "../data/products";
 
@@ -11,6 +12,7 @@ function formatCOP(value) {
 }
 
 export default function Caja() {
+  const navigate = useNavigate();
   const [selectedTableId, setSelectedTableId] = useState(null);
 
   const [paymentMethod, setPaymentMethod] = useState("efectivo"); // efectivo | transferencia
@@ -86,6 +88,8 @@ export default function Caja() {
       total: totalValue,
     };
 
+    const waiterName = order.waiterName || "Sin mesero";
+
     // Guardar en historial de ventas
     if (!Array.isArray(state.sales)) state.sales = [];
     state.sales.push({
@@ -98,6 +102,7 @@ export default function Caja() {
       createdAt: order.createdAt,
       paidAt: order.payment.paidAt,
       items: order.items,
+      waiterName,
     });
 
     // Liberar mesa
@@ -126,11 +131,34 @@ export default function Caja() {
 
   return (
     <div style={{ padding: 24, background: "#f6f8fc", minHeight: "100vh" }}>
-      <h1 style={{ marginTop: 0 }}>Caja</h1>
-      <p style={{ color: "#667085", marginTop: 6 }}>
-        Selecciona una mesa ocupada para cobrar y cerrar cuenta.
-      </p>
+      {/* Header */}
+      <div
+        style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
+      >
+        <div>
+          <h1 style={{ marginTop: 0 }}>Caja</h1>
+          <p style={{ color: "#667085", marginTop: 4 }}>
+            Cobros y cierre de cuenta
+          </p>
+        </div>
 
+        <button
+          onClick={() => navigate("/gerente")}
+          style={{
+            padding: 10,
+            borderRadius: 12,
+            border: "1px solid #e6eaf2",
+            background: "white",
+            cursor: "pointer",
+            fontWeight: 800,
+            height: 42,
+          }}
+        >
+          Volver al panel
+        </button>
+      </div>
+
+      {/* Contenido */}
       <div
         style={{
           marginTop: 16,

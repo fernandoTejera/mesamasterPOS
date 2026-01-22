@@ -1,5 +1,5 @@
 import "./mesaDetalle.css";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PRODUCTS } from "../data/products";
 import { loadState, saveState } from "../utils/storage";
@@ -13,8 +13,11 @@ function formatCOP(value) {
 }
 
 export default function MesaDetalle() {
-  const { id: tableId } = useParams();
+  const { id } = useParams();
+  const tableId = Number(id); // ✅ FIX: params siempre viene string
   const navigate = useNavigate();
+
+  const [customerName, setCustomerName] = useState("");
 
   // Cargamos el estado guardado
   const appState = loadState();
@@ -29,7 +32,7 @@ export default function MesaDetalle() {
     );
   }
 
-  const table = appState.tables.find((t) => t.id === tableId);
+  const table = appState.tables.find((t) => Number(t.id) === tableId); // ✅ FIX: number vs number
 
   if (!table) {
     return (
@@ -48,12 +51,17 @@ export default function MesaDetalle() {
     const newOrder = {
       id: newId,
       tableId,
-      items: [], // { productId, qty }
+      items: [],
       createdAt: new Date().toISOString(),
       sentToKitchen: false,
+
+      // metadata para la vista Mesas
+      waiterName: "Mesero 1", // luego te lo saco del usuario real
+      customerName: "",
     };
 
     // Guardar order
+    if (!appState.orders) appState.orders = {};
     appState.orders[newId] = newOrder;
 
     // Marcar mesa ocupada y enlazar order
@@ -67,13 +75,18 @@ export default function MesaDetalle() {
   const orderId = getOrCreateOrderId();
   const order = appState.orders[orderId];
 
+  // ✅ Precargar el input con el nombre guardado
+  useEffect(() => {
+    setCustomerName(order?.customerName || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
+
   function addProduct(productId) {
     const item = order.items.find((i) => i.productId === productId);
     if (item) item.qty += 1;
     else order.items.push({ productId, qty: 1 });
 
     saveState(appState);
-    // refrescar navegando a la misma ruta (simple)
     navigate(0);
   }
 
@@ -114,8 +127,14 @@ export default function MesaDetalle() {
     navigate("/mesas");
   }
 
+  function saveCustomer() {
+    order.customerName = customerName.trim(); // ✅ guardado limpio
+    saveState(appState);
+    alert("Cliente guardado.");
+  }
+
   const itemsDetailed = useMemo(() => {
-    return order.items.map((i) => {
+    return (order.items || []).map((i) => {
       const p = PRODUCTS.find((x) => x.id === i.productId);
       return {
         productId: i.productId,
@@ -128,6 +147,7 @@ export default function MesaDetalle() {
   }, [order.items]);
 
   const total = itemsDetailed.reduce((acc, x) => acc + x.subtotal, 0);
+
   return (
     <div className="detailPage">
       <div className="detailContainer">
@@ -138,6 +158,43 @@ export default function MesaDetalle() {
             <p>
               Pedido: {orderId} {order.sentToKitchen ? "• Enviado" : ""}
             </p>
+
+            {/* Cliente */}
+            <div
+              style={{
+                marginTop: 10,
+                display: "flex",
+                gap: 10,
+                flexWrap: "wrap",
+              }}
+            >
+              <input
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Nombre del cliente (opcional)"
+                style={{
+                  padding: 10,
+                  borderRadius: 12,
+                  border: "1px solid #e6eaf2",
+                  outline: "none",
+                  minWidth: 240,
+                }}
+              />
+
+              <button
+                onClick={saveCustomer}
+                style={{
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #e6eaf2",
+                  background: "white",
+                  cursor: "pointer",
+                  fontWeight: 800,
+                }}
+              >
+                Guardar cliente
+              </button>
+            </div>
           </div>
 
           <div className="topActions">

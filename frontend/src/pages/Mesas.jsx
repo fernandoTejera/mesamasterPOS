@@ -48,8 +48,19 @@ export default function Mesas() {
 
         <div className="mesasGrid">
           {tables.map((t) => {
-            const clientName = t.status === "occupied" ? "Cliente" : "";
-            const timeLabel = t.status === "occupied" ? "12:34" : "";
+            // ✅ Leer metadata desde el pedido real
+            const orderId = t.currentOrderId;
+            const order = orderId ? appState.orders?.[orderId] : null;
+
+            const timeLabel = order?.createdAt
+              ? new Date(order.createdAt).toLocaleTimeString("es-CO", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })
+              : "";
+
+            const waiterName = order?.waiterName || "";
+            const clientName = order?.customerName || "";
 
             return (
               <button
@@ -63,8 +74,9 @@ export default function Mesas() {
 
                 {t.status === "occupied" && (
                   <div className="tableMeta">
-                    <div>{timeLabel}</div>
-                    <div>{clientName}</div>
+                    {timeLabel && <div>🕒 {timeLabel}</div>}
+                    {waiterName && <div>👤 {waiterName}</div>}
+                    {clientName && <div>🙋 {clientName}</div>}
                   </div>
                 )}
               </button>

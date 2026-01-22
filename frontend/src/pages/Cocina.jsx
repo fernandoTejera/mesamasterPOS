@@ -1,4 +1,6 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { logout } from "../auth/auth";
 import { loadState, saveState } from "../utils/storage";
 import { PRODUCTS } from "../data/products";
 
@@ -11,6 +13,13 @@ function formatCOP(value) {
 }
 
 export default function Cocina() {
+  const navigate = useNavigate();
+
+  function handleLogout() {
+    logout();
+    navigate("/login");
+  }
+
   const [refresh, setRefresh] = useState(0); // fuerza render simple
   const state = loadState();
 
@@ -36,13 +45,6 @@ export default function Cocina() {
     return PRODUCTS.find((p) => p.id === productId);
   }
 
-  function calcTotal(order) {
-    return (order.items || []).reduce((acc, it) => {
-      const p = getProduct(it.productId);
-      return acc + (p?.price ?? 0) * it.qty;
-    }, 0);
-  }
-
   // Opción A: cocina termina preparación y lo saca de su lista,
   // pero NO libera mesa ni borra pedido (eso lo hará caja/gerente al cobrar)
   function finishOrder(orderId) {
@@ -56,10 +58,26 @@ export default function Cocina() {
 
   return (
     <div style={{ padding: 24, background: "#f6f8fc", minHeight: "100vh" }}>
+    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
       <h1 style={{ marginTop: 0 }}>Cocina</h1>
-      <p style={{ color: "#667085", marginTop: 6 }}>
-        Pedidos enviados por los meseros.
-      </p>
+      <button
+        onClick={handleLogout}
+        style={{
+          padding: 10,
+          borderRadius: 12,
+          border: "1px solid #e6eaf2",
+          background: "white",
+          cursor: "pointer",
+          fontWeight: 800,
+        }}
+      >
+        Cerrar sesión
+      </button>
+    </div>
+
+    <p style={{ color: "#667085", marginTop: 6 }}>
+      Pedidos enviados por los meseros.
+    </p>
 
       {ordersToShow.length === 0 ? (
         <div
@@ -83,8 +101,6 @@ export default function Cocina() {
           }}
         >
           {ordersToShow.map((o) => {
-            const total = calcTotal(o);
-
             return (
               <div
                 key={o.id}
@@ -151,19 +167,6 @@ export default function Cocina() {
                     );
                   })}
                 </div>
-
-                <div
-                  style={{
-                    marginTop: 12,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    fontWeight: 900,
-                  }}
-                >
-                  <span>Total</span>
-                  <span>{formatCOP(total)}</span>
-                </div>
-
                 <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
                   <button
                     onClick={() => finishOrder(o.id)}
