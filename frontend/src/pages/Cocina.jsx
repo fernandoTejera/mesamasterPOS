@@ -2,26 +2,21 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/auth";
 import { loadState, saveState } from "../utils/storage";
-import { PRODUCTS } from "../data/products";
-
-function formatCOP(value) {
-  return value.toLocaleString("es-CO", {
-    style: "currency",
-    currency: "COP",
-    maximumFractionDigits: 0,
-  });
-}
+import { ensureProducts } from "../utils/ensureProducts";
 
 export default function Cocina() {
   const navigate = useNavigate();
+  const [refresh, setRefresh] = useState(0);
+
+  // ✅ cargar estado y asegurar productos (DENTRO del componente)
+  const stateRaw = loadState();
+  const state = ensureProducts(stateRaw);
+  if (stateRaw !== state) saveState(state);
 
   function handleLogout() {
     logout();
     navigate("/login");
   }
-
-  const [refresh, setRefresh] = useState(0); // fuerza render simple
-  const state = loadState();
 
   const ordersToShow = useMemo(() => {
     if (!state) return [];
@@ -42,11 +37,9 @@ export default function Cocina() {
   }
 
   function getProduct(productId) {
-    return PRODUCTS.find((p) => p.id === productId);
+    return (state.products || []).find((p) => p.id === productId);
   }
 
-  // Opción A: cocina termina preparación y lo saca de su lista,
-  // pero NO libera mesa ni borra pedido (eso lo hará caja/gerente al cobrar)
   function finishOrder(orderId) {
     const order = state.orders?.[orderId];
     if (!order) return;
@@ -58,26 +51,26 @@ export default function Cocina() {
 
   return (
     <div style={{ padding: 24, background: "#f6f8fc", minHeight: "100vh" }}>
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-      <h1 style={{ marginTop: 0 }}>Cocina</h1>
-      <button
-        onClick={handleLogout}
-        style={{
-          padding: 10,
-          borderRadius: 12,
-          border: "1px solid #e6eaf2",
-          background: "white",
-          cursor: "pointer",
-          fontWeight: 800,
-        }}
-      >
-        Cerrar sesión
-      </button>
-    </div>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+        <h1 style={{ marginTop: 0 }}>Cocina</h1>
+        <button
+          onClick={handleLogout}
+          style={{
+            padding: 10,
+            borderRadius: 12,
+            border: "1px solid #e6eaf2",
+            background: "white",
+            cursor: "pointer",
+            fontWeight: 800,
+          }}
+        >
+          Cerrar sesión
+        </button>
+      </div>
 
-    <p style={{ color: "#667085", marginTop: 6 }}>
-      Pedidos enviados por los meseros.
-    </p>
+      <p style={{ color: "#667085", marginTop: 6 }}>
+        Pedidos enviados por los meseros.
+      </p>
 
       {ordersToShow.length === 0 ? (
         <div
@@ -100,93 +93,92 @@ export default function Cocina() {
             gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
           }}
         >
-          {ordersToShow.map((o) => {
-            return (
+          {ordersToShow.map((o) => (
+            <div
+              key={o.id}
+              style={{
+                background: "white",
+                border: "1px solid #e6eaf2",
+                borderRadius: 16,
+                padding: 16,
+                boxShadow: "0 10px 22px rgba(0,0,0,0.06)",
+              }}
+            >
               <div
-                key={o.id}
                 style={{
-                  background: "white",
-                  border: "1px solid #e6eaf2",
-                  borderRadius: 16,
-                  padding: 16,
-                  boxShadow: "0 10px 22px rgba(0,0,0,0.06)",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  alignItems: "flex-start",
                 }}
               >
+                <div>
+                  <div style={{ fontWeight: 900, fontSize: 16 }}>
+                    Mesa {o.tableId}
+                  </div>
+                  <div style={{ color: "#667085", fontSize: 13 }}>
+                    Pedido: {o.id}
+                  </div>
+                </div>
+
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 12,
-                    alignItems: "flex-start",
+                    padding: "6px 10px",
+                    borderRadius: 999,
+                    fontWeight: 800,
+                    fontSize: 12,
+                    color: "#1d4ed8",
+                    background: "#dbeafe",
+                    border: "1px solid #e6eaf2",
                   }}
                 >
-                  <div>
-                    <div style={{ fontWeight: 900, fontSize: 16 }}>
-                      Mesa {o.tableId}
-                    </div>
-                    <div style={{ color: "#667085", fontSize: 13 }}>
-                      Pedido: {o.id}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      fontWeight: 800,
-                      fontSize: 12,
-                      color: "#1d4ed8",
-                      background: "#dbeafe",
-                      border: "1px solid #e6eaf2",
-                    }}
-                  >
-                    EN PREPARACIÓN
-                  </div>
-                </div>
-
-                <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                  {(o.items || []).map((it) => {
-                    const p = getProduct(it.productId);
-                    return (
-                      <div
-                        key={it.productId}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 10,
-                          padding: 10,
-                          border: "1px solid #eef2f7",
-                          borderRadius: 12,
-                        }}
-                      >
-                        <div style={{ fontWeight: 800 }}>
-                          {p?.name ?? "Producto"}
-                        </div>
-                        <div style={{ fontWeight: 900 }}>x{it.qty}</div>
-                      </div>
-                    );
-                  })}
-                </div>
-                <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                  <button
-                    onClick={() => finishOrder(o.id)}
-                    style={{
-                      flex: 1,
-                      padding: 10,
-                      borderRadius: 12,
-                      border: "1px solid #e6eaf2",
-                      background: "#2563eb",
-                      color: "white",
-                      cursor: "pointer",
-                      fontWeight: 900,
-                    }}
-                  >
-                    Despachar
-                  </button>
+                  EN PREPARACIÓN
                 </div>
               </div>
-            );
-          })}
+
+              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
+                {(o.items || []).map((it) => {
+                  const p = getProduct(it.productId);
+                  return (
+                    <div
+                      key={it.productId}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        gap: 10,
+                        padding: 10,
+                        border: "1px solid #eef2f7",
+                        borderRadius: 12,
+                      }}
+                    >
+                      <div style={{ fontWeight: 800 }}>
+                        {p?.name ?? "Producto"}
+                      </div>
+                      <div style={{ fontWeight: 900 }}>x{it.qty}</div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
+                <button
+                  onClick={() => finishOrder(o.id)}
+                  style={{
+                    flex: 1,
+                    padding: 10,
+                    borderRadius: 12,
+                    border: "1px solid #e6eaf2",
+                    background: "#2563eb",
+                    color: "white",
+                    cursor: "pointer",
+                    fontWeight: 900,
+                  }}
+                >
+                  Despachar
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

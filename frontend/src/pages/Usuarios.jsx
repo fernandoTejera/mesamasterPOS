@@ -1,6 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadState, saveState } from "../utils/storage";
+import { ensureProducts } from "../utils/ensureProducts";
+
+const stateRaw = loadState();
+const state = ensureProducts(stateRaw);
+if (stateRaw !== state) saveState(state); // guarda si se inicializó
 
 export default function Usuarios() {
   const navigate = useNavigate();

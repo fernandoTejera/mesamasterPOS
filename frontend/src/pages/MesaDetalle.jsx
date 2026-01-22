@@ -1,11 +1,11 @@
 import "./mesaDetalle.css";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { PRODUCTS } from "../data/products";
 import { loadState, saveState } from "../utils/storage";
+import { ensureProducts } from "../utils/ensureProducts";
 
 function formatCOP(value) {
-  return value.toLocaleString("es-CO", {
+  return Number(value || 0).toLocaleString("es-CO", {
     style: "currency",
     currency: "COP",
     maximumFractionDigits: 0,
@@ -14,15 +14,16 @@ function formatCOP(value) {
 
 export default function MesaDetalle() {
   const { id } = useParams();
-  const tableId = Number(id); // ✅ FIX: params siempre viene string
+  const tableId = Number(id); // params siempre string
   const navigate = useNavigate();
 
   const [customerName, setCustomerName] = useState("");
 
-  // Cargamos el estado guardado
-  const appState = loadState();
+  // ✅ cargar estado y asegurar products (DENTRO del componente)
+  const raw = loadState();
+  const appState = ensureProducts(raw);
+  if (raw !== appState) saveState(appState);
 
-  // Si por alguna razón no hay state, mandamos a mesas
   if (!appState) {
     return (
       <div style={{ padding: 24 }}>
@@ -32,7 +33,7 @@ export default function MesaDetalle() {
     );
   }
 
-  const table = appState.tables.find((t) => Number(t.id) === tableId); // ✅ FIX: number vs number
+  const table = (appState.tables || []).find((t) => Number(t.id) === tableId);
 
   if (!table) {
     return (
@@ -43,28 +44,34 @@ export default function MesaDetalle() {
     );
   }
 
-  // Obtener o crear order
+  // ✅ lista de productos activos para el mesero
+  const activeProducts = (appState.products || []).filter(
+    (p) => p.active !== false
+  );
+
   function getOrCreateOrderId() {
     if (table.currentOrderId) return table.currentOrderId;
 
     const newId = `o_${Date.now()}`;
+
+    // ✅ aquí debería venir del usuario logueado (ya lo tienes)
+    const userName = localStorage.getItem("userName") || "Mesero";
+
     const newOrder = {
       id: newId,
       tableId,
       items: [],
       createdAt: new Date().toISOString(),
       sentToKitchen: false,
+      kitchenDone: false,
 
-      // metadata para la vista Mesas
-      waiterName: "Mesero 1", // luego te lo saco del usuario real
+      waiterName: userName,
       customerName: "",
     };
 
-    // Guardar order
     if (!appState.orders) appState.orders = {};
     appState.orders[newId] = newOrder;
 
-    // Marcar mesa ocupada y enlazar order
     table.status = "occupied";
     table.currentOrderId = newId;
 
@@ -73,9 +80,9 @@ export default function MesaDetalle() {
   }
 
   const orderId = getOrCreateOrderId();
-  const order = appState.orders[orderId];
+  const order = appState.orders?.[orderId];
 
-  // ✅ Precargar el input con el nombre guardado
+  // precargar input con customerName guardado
   useEffect(() => {
     setCustomerName(order?.customerName || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -119,7 +126,7 @@ export default function MesaDetalle() {
   }
 
   function closeTable() {
-    // borrar pedido y liberar mesa (para pruebas)
+    // (solo pruebas) borrar pedido y liberar mesa
     delete appState.orders[orderId];
     table.status = "free";
     table.currentOrderId = null;
@@ -128,14 +135,14 @@ export default function MesaDetalle() {
   }
 
   function saveCustomer() {
-    order.customerName = customerName.trim(); // ✅ guardado limpio
+    order.customerName = customerName.trim();
     saveState(appState);
     alert("Cliente guardado.");
   }
 
   const itemsDetailed = useMemo(() => {
     return (order.items || []).map((i) => {
-      const p = PRODUCTS.find((x) => x.id === i.productId);
+      const p = (appState.products || []).find((x) => x.id === i.productId);
       return {
         productId: i.productId,
         name: p?.name ?? "Producto",
@@ -144,7 +151,7 @@ export default function MesaDetalle() {
         subtotal: (p?.price ?? 0) * i.qty,
       };
     });
-  }, [order.items]);
+  }, [order.items, appState.products]);
 
   const total = itemsDetailed.reduce((acc, x) => acc + x.subtotal, 0);
 
@@ -263,7 +270,7 @@ export default function MesaDetalle() {
             <h2 className="cardTitle">Productos</h2>
 
             <div className="scrollArea">
-              {PRODUCTS.map((p) => (
+              {activeProducts.map((p) => (
                 <button
                   key={p.id}
                   className="productBtn"
@@ -275,6 +282,12 @@ export default function MesaDetalle() {
                   </div>
                 </button>
               ))}
+
+              {activeProducts.length === 0 && (
+                <p style={{ color: "#667085", fontWeight: 700 }}>
+                  No hay productos activos.
+                </p>
+              )}
             </div>
           </div>
         </div>

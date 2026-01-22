@@ -8,6 +8,8 @@ import Gerente from "./pages/Gerente";
 import MesaDetalle from "./pages/MesaDetalle";
 import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
+import ConfigMesas from "./pages/ConfigMesas";
+import Productos from "./pages/Productos";
 
 export default function App() {
   return (
@@ -66,6 +68,24 @@ export default function App() {
             </RoleRoute>
           }
         />
+        <Route
+          path="/config-mesas"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <ConfigMesas />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="/productos"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <Productos />
+            </RoleRoute>
+          }
+        />
+
         <Route
           path="/reportes"
           element={

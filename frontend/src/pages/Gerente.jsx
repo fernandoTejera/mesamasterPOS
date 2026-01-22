@@ -1,5 +1,15 @@
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/auth";
+import {
+  FiShoppingCart,
+  FiBox,
+  FiUsers,
+  FiBarChart2,
+  FiGrid,
+  FiLogOut,
+  FiUser,
+} from "react-icons/fi";
+import "./gerente.css";
 
 export default function Gerente() {
   const navigate = useNavigate();
@@ -10,104 +20,88 @@ export default function Gerente() {
   }
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "#f6f8fc",
-        padding: 24,
-        display: "grid",
-        placeItems: "center",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "white",
-          border: "1px solid #e6eaf2",
-          borderRadius: 16,
-          padding: 24,
-          boxShadow: "0 10px 22px rgba(0,0,0,0.06)",
-        }}
-      >
-        <h1 style={{ marginTop: 0 }}>Panel del Gerente</h1>
-        <p style={{ color: "#667085", marginTop: 6 }}>Selecciona una opción.</p>
-
-        <div style={{ display: "grid", gap: 12, marginTop: 20 }}>
-          <button
-            onClick={() => navigate("/caja")}
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #e6eaf2",
-              background: "#2563eb",
-              color: "white",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Caja / Cobros
-          </button>
-
-          <button
-            disabled
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #e6eaf2",
-              background: "#f2f4f7",
-              color: "#667085",
-              fontWeight: 800,
-              cursor: "not-allowed",
-            }}
-          >
-            Productos
-          </button>
-          <button
-            onClick={() => navigate("/usuarios")}
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #e6eaf2",
-              background: "white",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Usuarios
-          </button>
-          <button
-            onClick={() => navigate("/reportes")}
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              border: "1px solid #e6eaf2",
-              background: "#f2f4f7",
-              color: "#111827",
-              fontWeight: 900,
-              cursor: "pointer",
-            }}
-          >
-            Reportes
-          </button>
+    <div className="dashboardPage">
+      {/* Header */}
+      <header className="dashboardHeader">
+        <div className="dashboardTitleBlock">
+          <h1 className="dashboardTitle">Panel del Gerente</h1>
+          <p className="dashboardSubtitle">
+            Bienvenido de nuevo, selecciona una gestión:
+          </p>
         </div>
 
-        <button
-          onClick={handleLogout}
-          style={{
-            marginTop: 20,
-            width: "100%",
-            padding: 12,
-            borderRadius: 12,
-            border: "1px solid #e6eaf2",
-            background: "white",
-            fontWeight: 800,
-            cursor: "pointer",
-          }}
-        >
-          Cerrar sesión
+        <button className="profileBtn" type="button" aria-label="Perfil">
+          <FiUser size={20} />
         </button>
-      </div>
+      </header>
+
+      {/* Grid de acciones */}
+      <section className="dashboardGrid">
+        <ActionCard
+          icon={<FiShoppingCart size={32} />}
+          label="Caja / Cobros"
+          onClick={() => navigate("/caja")}
+        />
+
+        <ActionCard
+          icon={<FiBox size={32} />}
+          label="Productos"
+          onClick={() => navigate("/productos")}
+        />
+
+        <ActionCard
+          icon={<FiUsers size={32} />}
+          label="Usuarios"
+          onClick={() => navigate("/usuarios")}
+        />
+
+        <ActionCard
+          icon={<FiBarChart2 size={32} />}
+          label="Reportes"
+          onClick={() => navigate("/reportes")}
+        />
+
+        <ActionCard
+          icon={<FiGrid size={32} />}
+          label="Configurar mesas"
+          onClick={() => navigate("/config-mesas")}
+        />
+
+        <ActionCard
+          icon={<FiLogOut size={32} />}
+          label="Cerrar sesión"
+          onClick={handleLogout}
+          danger
+        />
+      </section>
+
+      {/* Resumen del día (placeholder por ahora, luego lo conectamos a state.sales) */}
+      <section className="summaryCard">
+        <h3 className="summaryTitle">Resumen del día</h3>
+        <div className="summaryRow">
+          <span className="summaryLabel">Ventas hoy</span>
+          <span className="summaryValue">$ 0</span>
+        </div>
+        <div className="summaryRow">
+          <span className="summaryLabel">Transacciones</span>
+          <span className="summaryValue">0</span>
+        </div>
+      </section>
     </div>
+  );
+}
+
+function ActionCard({ icon, label, onClick, danger, disabled, note }) {
+  return (
+    <button
+      className={`actionCard ${danger ? "danger" : ""}`}
+      onClick={onClick}
+      disabled={disabled}
+      type="button"
+    >
+      <div className="actionIcon">{icon}</div>
+      <div className="actionLabel">{label}</div>
+      {note && <div className="actionNote">{note}</div>}
+    </button>
   );
 }

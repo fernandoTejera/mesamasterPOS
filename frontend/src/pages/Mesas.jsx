@@ -4,6 +4,11 @@ import { logout } from "../auth/auth";
 import "./mesas.css";
 import { loadState, saveState } from "../utils/storage";
 import { createInitialState } from "../state/initialState";
+import { ensureProducts } from "../utils/ensureProducts";
+
+const stateRaw = loadState();
+const state = ensureProducts(stateRaw);
+if (stateRaw !== state) saveState(state); // guarda si se inicializó
 
 export default function Mesas() {
   const navigate = useNavigate();

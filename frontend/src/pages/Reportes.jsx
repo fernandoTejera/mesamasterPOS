@@ -1,6 +1,11 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadState } from "../utils/storage";
+import { ensureProducts } from "../utils/ensureProducts";
+
+const stateRaw = loadState();
+const state = ensureProducts(stateRaw);
+if (stateRaw !== state) saveState(state); // guarda si se inicializó
 
 function formatCOP(value) {
   return (value || 0).toLocaleString("es-CO", {

@@ -1,0 +1,133 @@
+.dashboardPage {
+  min-height: 100vh;
+  background: #f8fafc;
+  padding: 28px;
+  display: grid;
+  gap: 22px;
+}
+
+.dashboardHeader {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.dashboardTitleBlock {
+  display: grid;
+  gap: 6px;
+}
+
+.dashboardTitle {
+  margin: 0;
+  font-size: 40px;
+  letter-spacing: -0.02em;
+}
+
+.dashboardSubtitle {
+  margin: 0;
+  color: #667085;
+  font-weight: 600;
+}
+
+.profileBtn {
+  height: 44px;
+  width: 44px;
+  border-radius: 999px;
+  border: 1px solid #e6eaf2;
+  background: white;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+
+.profileBtn:hover {
+  background: #f2f4f7;
+}
+
+.dashboardGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 22px;
+}
+
+.actionCard {
+  background: white;
+  border: 1px solid #e6eaf2;
+  border-radius: 18px;
+  padding: 26px 18px;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.06);
+  color: #0b2a55;
+}
+
+.actionCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.10);
+}
+
+.actionCard:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.actionIcon {
+  color: #1d4ed8;
+}
+
+.actionLabel {
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.actionNote {
+  color: #667085;
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.actionCard.danger {
+  color: #b42318;
+  border: 2px solid rgba(180, 35, 24, 0.35);
+}
+
+.actionCard.danger .actionIcon {
+  color: #b42318;
+}
+
+.summaryCard {
+  max-width: 420px;
+  background: white;
+  border: 1px solid #e6eaf2;
+  border-radius: 16px;
+  padding: 18px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+.summaryTitle {
+  margin: 0 0 12px 0;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 0;
+}
+
+.summaryLabel {
+  color: #667085;
+  font-weight: 700;
+}
+
+.summaryValue {
+  font-weight: 950;
+}

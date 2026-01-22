@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loadState, saveState } from "../utils/storage";
-import { PRODUCTS } from "../data/products";
+import { ensureProducts } from "../utils/ensureProducts";
 
 function formatCOP(value) {
-  return value.toLocaleString("es-CO", {
+  return Number(value || 0).toLocaleString("es-CO", {
     style: "currency",
     currency: "COP",
     maximumFractionDigits: 0,
@@ -19,7 +19,10 @@ export default function Caja() {
   const [paymentNote, setPaymentNote] = useState("");
   const [msg, setMsg] = useState("");
 
-  const state = loadState();
+  // ✅ cargar estado y asegurar products (DENTRO del componente)
+  const raw = loadState();
+  const state = ensureProducts(raw);
+  if (raw !== state) saveState(state);
 
   const occupiedTables = useMemo(() => {
     if (!state) return [];
@@ -28,13 +31,13 @@ export default function Caja() {
 
   const currentOrder = useMemo(() => {
     if (!state || !selectedTableId) return null;
-    const table = state.tables.find((t) => t.id === selectedTableId);
+    const table = (state.tables || []).find((t) => t.id === selectedTableId);
     if (!table?.currentOrderId) return null;
     return state.orders?.[table.currentOrderId] || null;
   }, [state, selectedTableId]);
 
   function getProduct(productId) {
-    return PRODUCTS.find((p) => p.id === productId);
+    return (state.products || []).find((p) => p.id === productId);
   }
 
   const itemsDetailed = useMemo(() => {
@@ -49,6 +52,7 @@ export default function Caja() {
         subtotal: (p?.price ?? 0) * i.qty,
       };
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentOrder]);
 
   const total = itemsDetailed.reduce((acc, x) => acc + x.subtotal, 0);
@@ -61,7 +65,7 @@ export default function Caja() {
       return;
     }
 
-    const table = state.tables.find((t) => t.id === selectedTableId);
+    const table = (state.tables || []).find((t) => t.id === selectedTableId);
     if (!table?.currentOrderId) {
       setMsg("Esa mesa no tiene pedido activo.");
       return;
@@ -73,9 +77,9 @@ export default function Caja() {
       return;
     }
 
-    // Calculamos total (seguro)
+    // ✅ total calculado desde state.products
     const totalValue = (order.items || []).reduce((acc, it) => {
-      const p = PRODUCTS.find((x) => x.id === it.productId);
+      const p = (state.products || []).find((x) => x.id === it.productId);
       return acc + (p?.price ?? 0) * it.qty;
     }, 0);
 
@@ -132,9 +136,7 @@ export default function Caja() {
   return (
     <div style={{ padding: 24, background: "#f6f8fc", minHeight: "100vh" }}>
       {/* Header */}
-      <div
-        style={{ display: "flex", justifyContent: "space-between", gap: 12 }}
-      >
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div>
           <h1 style={{ marginTop: 0 }}>Caja</h1>
           <p style={{ color: "#667085", marginTop: 4 }}>
