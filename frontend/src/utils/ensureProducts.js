@@ -45,11 +45,16 @@ export function ensureProducts(state) {
   }
   // categories
   if (!Array.isArray(next.categories) || next.categories.length === 0) {
-    // Sacamos categorías únicas desde products
     const uniq = Array.from(
-      new Set((next.products || []).map((p) => p.category).filter(Boolean)),
+      new Set((next.products || []).map((p) => p.category).filter(Boolean))
     );
     next.categories = uniq.length ? uniq : ["Comidas", "Bebidas"];
+    changed = true;
+  }
+
+  // ✅ kitchenTickets (comandas FIFO)
+  if (!Array.isArray(next.kitchenTickets)) {
+    next.kitchenTickets = [];
     changed = true;
   }
 

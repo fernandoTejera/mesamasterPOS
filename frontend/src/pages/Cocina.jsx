@@ -24,7 +24,7 @@ function elapsedLabel(mins) {
   return `${h}h ${String(m).padStart(2, "0")}m`;
 }
 
-// Verde → Amarillo → Rojo
+// Solo visual (NO afecta el orden)
 function urgencyColor(mins) {
   if (mins >= 15) return { bg: "#fee2e2", text: "#991b1b", border: "#ef4444" };
   if (mins >= 8) return { bg: "#fef3c7", text: "#92400e", border: "#f59e0b" };
@@ -51,32 +51,18 @@ export default function Cocina() {
     navigate("/login");
   }
 
- const ordersToShow = useMemo(() => {
-  if (!state) return [];
+  // ✅ FIFO PURO (más antiguo primero)
+  const ticketsToShow = useMemo(() => {
+    if (!state) return [];
 
-  const allOrders = Object.values(state.orders || {})
-    .filter((o) => o.sentToKitchen === true && o.kitchenDone !== true);
+    const allTickets = Array.isArray(state.kitchenTickets)
+      ? state.kitchenTickets
+      : [];
 
-  // 2 = rojo, 1 = amarillo, 0 = verde
-  const bucket = (createdAt) => {
-    const mins = elapsedMinutes(createdAt);
-    if (mins >= 15) return 2;
-    if (mins >= 8) return 1;
-    return 0;
-  };
-
-  return allOrders.sort((a, b) => {
-    const ba = bucket(a.createdAt);
-    const bb = bucket(b.createdAt);
-
-    // 1) prioridad por color: rojos primero
-    if (ba !== bb) return bb - ba;
-
-    // 2) dentro del mismo color: FIFO (más antiguo primero)
-    return new Date(a.createdAt) - new Date(b.createdAt);
-  });
-}, [state, refresh]);
-
+    return allTickets
+      .filter((t) => t.done !== true)
+      .sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+  }, [state, refresh]);
 
   const nowLabel = useMemo(() => {
     const d = new Date();
@@ -96,15 +82,14 @@ export default function Cocina() {
     return (state.products || []).find((p) => p.id === productId);
   }
 
-  function getNote(order, productId) {
-    return order?.itemNotes?.[productId]?.trim() || "";
-  }
+  function finishTicket(ticketId) {
+    const list = Array.isArray(state.kitchenTickets) ? state.kitchenTickets : [];
+    const t = list.find((x) => x.id === ticketId);
+    if (!t) return;
 
-  function finishOrder(orderId) {
-    const order = state.orders?.[orderId];
-    if (!order) return;
+    t.done = true;
+    t.doneAt = new Date().toISOString();
 
-    order.kitchenDone = true;
     saveState(state);
     setRefresh((x) => x + 1);
   }
@@ -123,7 +108,8 @@ export default function Cocina() {
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950 }}>Cocina</h1>
           <p style={{ margin: "6px 0 0", color: "#667085", fontWeight: 700 }}>
-            Órdenes activas: <b>{ordersToShow.length}</b> • Hora: <b>{nowLabel}</b>
+            Comandas activas: <b>{ticketsToShow.length}</b> • Hora:{" "}
+            <b>{nowLabel}</b>
           </p>
         </div>
 
@@ -142,7 +128,7 @@ export default function Cocina() {
         </button>
       </div>
 
-      {ordersToShow.length === 0 ? (
+      {ticketsToShow.length === 0 ? (
         <div
           style={{
             marginTop: 16,
@@ -154,7 +140,7 @@ export default function Cocina() {
             fontWeight: 800,
           }}
         >
-          ✅ No hay pedidos pendientes.
+          ✅ No hay comandas pendientes.
         </div>
       ) : (
         <div
@@ -165,13 +151,13 @@ export default function Cocina() {
             gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           }}
         >
-          {ordersToShow.map((o) => {
-            const mins = elapsedMinutes(o.createdAt);
+          {ticketsToShow.map((t) => {
+            const mins = elapsedMinutes(t.createdAt);
             const urgency = urgencyColor(mins);
 
             return (
               <div
-                key={o.id}
+                key={t.id}
                 style={{
                   background: "white",
                   border: "1px solid #e6eaf2",
@@ -181,7 +167,7 @@ export default function Cocina() {
                   position: "relative",
                 }}
               >
-                {/* barra urgencia */}
+                {/* barra urgencia (solo visual) */}
                 <div
                   style={{
                     position: "absolute",
@@ -203,7 +189,7 @@ export default function Cocina() {
                 >
                   <div>
                     <div style={{ fontWeight: 950, fontSize: 18 }}>
-                      Mesa {o.tableId}
+                      Mesa {t.tableId}
                     </div>
                     <div
                       style={{
@@ -212,7 +198,8 @@ export default function Cocina() {
                         fontSize: 12,
                       }}
                     >
-                      Pedido {o.id} • {formatTimeHM(o.createdAt)}
+                      Comanda {t.id} • {formatTimeHM(t.createdAt)}
+                      {t.waiterName ? ` • ${t.waiterName}` : ""}
                     </div>
                   </div>
 
@@ -240,13 +227,13 @@ export default function Cocina() {
                     paddingLeft: 6,
                   }}
                 >
-                  {(o.items || []).map((it) => {
+                  {(t.items || []).map((it, idx) => {
                     const p = getProduct(it.productId);
-                    const note = getNote(o, it.productId);
+                    const note = (it.note || "").trim();
 
                     return (
                       <div
-                        key={it.productId}
+                        key={`${it.productId}_${idx}`}
                         style={{
                           display: "flex",
                           justifyContent: "space-between",
@@ -262,7 +249,7 @@ export default function Cocina() {
                             {(p?.name || "Producto").toUpperCase()}
                           </div>
 
-                          {note && (
+                          {note ? (
                             <div
                               style={{
                                 fontWeight: 900,
@@ -277,7 +264,7 @@ export default function Cocina() {
                             >
                               📝 {note}
                             </div>
-                          )}
+                          ) : null}
                         </div>
 
                         <div style={{ fontWeight: 950, fontSize: 16 }}>
@@ -291,7 +278,7 @@ export default function Cocina() {
                 {/* acción */}
                 <div style={{ marginTop: 12, paddingLeft: 6 }}>
                   <button
-                    onClick={() => finishOrder(o.id)}
+                    onClick={() => finishTicket(t.id)}
                     style={{
                       width: "100%",
                       padding: 12,
@@ -304,7 +291,7 @@ export default function Cocina() {
                       fontSize: 15,
                     }}
                   >
-                    ✅ Despachar
+                    ✅ Despachar comanda
                   </button>
                 </div>
               </div>

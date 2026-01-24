@@ -11,24 +11,31 @@ export default function Login() {
   const [error, setError] = useState("");
   const navigate = useNavigate();
   async function handleSubmit(e) {
-  e.preventDefault();
-  setError("");
+    e.preventDefault();
+    setError("");
 
-  try {
-    const data = await login(email, password);
+    try {
+      const data = await login(email, password);
 
-    // Guardar token (simple por ahora)
-    localStorage.setItem("token", data.token);
+      // Guardar token (simple por ahora)
+      localStorage.setItem("token", data.token);
 
-    // Redirigir según rol
-    if (data.user.role === "mesero") navigate("/mesas");
-    else if (data.user.role === "cocina") navigate("/cocina");
-    else if (data.user.role === "gerente") navigate("/gerente");
-    else setError("Rol desconocido");
-  } catch (err) {
-    setError(err.message);
+      // Guardar token (simple por ahora)
+      localStorage.setItem("token", data.token);
+
+      // ✅ para usar en MesaDetalle y en roles sin jwtDecode
+      localStorage.setItem("userName", data.user?.name || "");
+      localStorage.setItem("userRole", data.user?.role || "");
+
+      // Redirigir según rol
+      if (data.user.role === "mesero") navigate("/mesas");
+      else if (data.user.role === "cocina") navigate("/cocina");
+      else if (data.user.role === "gerente") navigate("/gerente");
+      else setError("Rol desconocido");
+    } catch (err) {
+      setError(err.message);
+    }
   }
-}
   return (
     <div className="loginPage">
       <div className="loginCard">
@@ -55,7 +62,7 @@ export default function Login() {
                 type="email"
                 placeholder="Correo electrónico"
                 value={email}
-                onChange={(e) =>setEmail(e.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>

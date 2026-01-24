@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
+import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import { loadState } from "../utils/storage";
 import { ensureProducts } from "../utils/ensureProducts";
+import { buildReport, rangePresets } from "../utils/reports";
 import {
   FiArrowLeft,
   FiDollarSign,
@@ -20,20 +22,6 @@ function formatCOP(value) {
   });
 }
 
-function isSameDay(a, b) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
-
-function inLastDays(date, days) {
-  const from = new Date();
-  from.setDate(from.getDate() - days);
-  return date >= from;
-}
-
 function formatPrettyDate(d = new Date()) {
   return d.toLocaleDateString("es-CO", {
     weekday: "long",
@@ -43,113 +31,183 @@ function formatPrettyDate(d = new Date()) {
   });
 }
 
+function prettyMethod(name) {
+  if (name === "transferencia") return "Transferencia";
+  if (name === "efectivo") return "Efectivo";
+  if (!name) return "—";
+  // Capitaliza primera letra para otros casos
+  return String(name).charAt(0).toUpperCase() + String(name).slice(1);
+}
+
 export default function Reportes() {
   const navigate = useNavigate();
   const raw = loadState();
   const state = ensureProducts(raw);
 
-  const [filter, setFilter] = useState("hoy"); // hoy | semana | todo
+  // ✅ Filtros PRO
+  const [filter, setFilter] = useState("hoy"); // hoy | ayer | ult7 | mes
 
-  const allSales = useMemo(() => {
-    return Array.isArray(state?.sales) ? state.sales : [];
-  }, [state]);
+  const presets = useMemo(() => rangePresets(), []);
+  const report = useMemo(() => buildReport(state || {}, filter), [state, filter]);
 
-  const products = useMemo(() => {
-    // si ya tienes state.products úsalo, si no, fallback vacío
-    return Array.isArray(state?.products) ? state.products : [];
-  }, [state]);
+  const kpis = report.kpis;
 
-  const filteredSales = useMemo(() => {
-    const now = new Date();
-    if (filter === "todo") return allSales;
+  const dominantMethod = useMemo(() => {
+    const arr = report.byMethod || [];
+    if (arr.length === 0) return { name: "—", value: 0 };
+    const top = arr[0];
+    return { name: prettyMethod(top.name), value: top.value };
+  }, [report.byMethod]);
 
-    if (filter === "hoy") {
-      return allSales.filter((s) => {
-        const d = new Date(s.paidAt || s.createdAt);
-        return isSameDay(d, now);
-      });
-    }
+  const efectivo = useMemo(() => {
+    const found = (report.byMethod || []).find((x) => x.name === "efectivo");
+    return found ? found.value : 0;
+  }, [report.byMethod]);
 
-    return allSales.filter((s) => {
-      const d = new Date(s.paidAt || s.createdAt);
-      return inLastDays(d, 7);
-    });
-  }, [allSales, filter]);
+  const transferencia = useMemo(() => {
+    const found = (report.byMethod || []).find((x) => x.name === "transferencia");
+    return found ? found.value : 0;
+  }, [report.byMethod]);
 
-  const kpis = useMemo(() => {
-    let total = 0;
-    let efectivo = 0;
-    let transferencia = 0;
-
-    const byWaiter = {}; // {name: total}
-    const byProduct = {}; // {productId: qty}
-
-    for (const s of filteredSales) {
-      const t = Number(s.total || 0);
-      total += t;
-
-      const m = (s.method || "").toLowerCase();
-      if (m === "transferencia") transferencia += t;
-      else efectivo += t;
-
-      const w = s.waiterName || "Sin mesero";
-      byWaiter[w] = (byWaiter[w] || 0) + t;
-
-      // productos más vendidos (qty)
-      for (const it of s.items || []) {
-        const pid = it.productId;
-        const qty = Number(it.qty || 0);
-        byProduct[pid] = (byProduct[pid] || 0) + qty;
-      }
-    }
-
-    const count = filteredSales.length;
-    const avgTicket = count > 0 ? total / count : 0;
-
-    const dominantMethod =
-      transferencia > efectivo
-        ? { name: "Transferencia", value: transferencia }
-        : { name: "Efectivo", value: efectivo };
-
-    const topWaiters = Object.entries(byWaiter)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([name, total]) => ({ name, total }));
-
-    const topProducts = Object.entries(byProduct)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 5)
-      .map(([productId, qty]) => {
-        const p = products.find((x) => String(x.id) === String(productId));
-        return { productId, name: p?.name ?? `Producto ${productId}`, qty };
-      });
-
-    return {
-      total,
-      count,
-      efectivo,
-      transferencia,
-      avgTicket,
-      dominantMethod,
-      topWaiters,
-      topProducts,
-    };
-  }, [filteredSales, products]);
-
+  // Ventas recientes (últimas 10 dentro del rango)
   const recentSales = useMemo(() => {
-    return [...filteredSales]
-      .sort((a, b) =>
-        (a.paidAt || a.createdAt) < (b.paidAt || b.createdAt) ? 1 : -1
-      )
-      .slice(0, 10);
-  }, [filteredSales]);
+    const arr = [...(report.sales || [])];
+    arr.sort(
+      (a, b) => new Date(b.paidAt || b.createdAt) - new Date(a.paidAt || a.createdAt)
+    );
+    return arr.slice(0, 10);
+  }, [report.sales]);
 
-  const filterLabel =
-    filter === "hoy" ? "Hoy" : filter === "semana" ? "Últimos 7 días" : "Todo";
+  const filterLabel = presets?.[filter]?.label || "Hoy";
 
   // estilos base
   const pageBg = "#F8FAFC";
   const border = "1px solid #E6EAF2";
+
+  function exportXLSX() {
+    const label = report?.preset?.label || "Reporte";
+    const dateTag = new Date().toISOString().slice(0, 10);
+    const fileName = `MesaMaster_${label.replaceAll(" ", "_")}_${dateTag}.xlsx`;
+
+    const money = (n) => Number(n || 0);
+    const prettyDate = (iso) => (iso ? new Date(iso).toLocaleString("es-CO") : "");
+
+    // 1) Hoja RESUMEN
+    const resumen = [
+      ["Reporte", label],
+      ["Generado", new Date().toLocaleString("es-CO")],
+      [],
+      ["Total vendido", money(report.kpis.total)],
+      ["Transacciones", report.kpis.count],
+      ["Ticket promedio", money(report.kpis.avgTicket)],
+    ];
+
+    const ef = (report.byMethod || []).find((x) => x.name === "efectivo")?.value || 0;
+    const tr =
+      (report.byMethod || []).find((x) => x.name === "transferencia")?.value || 0;
+    resumen.push(["Efectivo", money(ef)]);
+    resumen.push(["Transferencia", money(tr)]);
+
+    // 2) Hoja METODOS
+    const metodos = [
+      ["Método", "Total"],
+      ...(report.byMethod || []).map((x) => [prettyMethod(x.name), money(x.value)]),
+    ];
+
+    // 3) Hoja MESEROS
+    const meseros = [
+      ["Mesero", "Total"],
+      ...(report.byWaiter || []).map((x) => [x.name, money(x.value)]),
+    ];
+
+    // 4) Hoja CATEGORIAS
+    const categorias = [
+      ["Categoría", "Total"],
+      ...(report.byCategory || []).map((x) => [x.name, money(x.value)]),
+    ];
+
+    // 5) Hoja TOP_PRODUCTOS
+    const topProductos = [
+      ["Producto", "Total"],
+      ...(report.topProducts || []).map((x) => [x.name, money(x.value)]),
+    ];
+
+    // 6) Hoja DETALLE (ventas + items + notas)
+    const productMap = new Map((state?.products || []).map((p) => [String(p.id), p]));
+
+    const detalle = [
+      ["VentaId", "FechaPago", "Mesa", "Mesero", "Cliente", "Método", "Total", "Items", "Notas"],
+      ...(report.sales || []).map((s) => {
+        const itemsTxt = (s.items || [])
+          .map((it) => {
+            const p = productMap.get(String(it.productId));
+            const name = p?.name || `Producto ${it.productId}`;
+            return `${name} x${it.qty}`;
+          })
+          .join(" | ");
+
+        const notesTxt = Object.entries(s.itemNotes || {})
+          .map(([pid, note]) => {
+            const p = productMap.get(String(pid));
+            const name = p?.name || `Producto ${pid}`;
+            const clean = String(note || "").trim();
+            return clean ? `${name}: ${clean}` : "";
+          })
+          .filter(Boolean)
+          .join(" | ");
+
+        return [
+          s.id || "",
+          prettyDate(s.paidAt || s.createdAt),
+          s.tableId ?? "",
+          s.waiterName || "",
+          s.customerName || "",
+          prettyMethod(s.method || ""),
+          money(s.total),
+          itemsTxt,
+          notesTxt,
+        ];
+      }),
+    ];
+
+    // Workbook
+    const wb = XLSX.utils.book_new();
+
+    const wsResumen = XLSX.utils.aoa_to_sheet(resumen);
+    const wsMetodos = XLSX.utils.aoa_to_sheet(metodos);
+    const wsMeseros = XLSX.utils.aoa_to_sheet(meseros);
+    const wsCategorias = XLSX.utils.aoa_to_sheet(categorias);
+    const wsTop = XLSX.utils.aoa_to_sheet(topProductos);
+    const wsDetalle = XLSX.utils.aoa_to_sheet(detalle);
+
+    // Auto ancho columnas
+    const autoWidth = (ws, data) => {
+      const cols = (data[0] || []).map((_, i) => {
+        const max = data.reduce((acc, row) => {
+          const v = row[i] ?? "";
+          return Math.max(acc, String(v).length);
+        }, 10);
+        return { wch: Math.min(Math.max(max + 2, 12), 60) };
+      });
+      ws["!cols"] = cols;
+    };
+
+    autoWidth(wsResumen, resumen);
+    autoWidth(wsMetodos, metodos);
+    autoWidth(wsMeseros, meseros);
+    autoWidth(wsCategorias, categorias);
+    autoWidth(wsTop, topProductos);
+    autoWidth(wsDetalle, detalle);
+
+    XLSX.utils.book_append_sheet(wb, wsResumen, "Resumen");
+    XLSX.utils.book_append_sheet(wb, wsMetodos, "Métodos");
+    XLSX.utils.book_append_sheet(wb, wsMeseros, "Meseros");
+    XLSX.utils.book_append_sheet(wb, wsCategorias, "Categorías");
+    XLSX.utils.book_append_sheet(wb, wsTop, "Top productos");
+    XLSX.utils.book_append_sheet(wb, wsDetalle, "Detalle");
+
+    XLSX.writeFile(wb, fileName);
+  }
 
   if (!state) {
     return (
@@ -187,7 +245,7 @@ export default function Reportes() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <button
             type="button"
-            onClick={() => alert("Exportar (MVP): luego lo hacemos CSV/PDF")}
+            onClick={exportXLSX}
             style={{
               padding: "10px 12px",
               borderRadius: 12,
@@ -201,7 +259,7 @@ export default function Reportes() {
               height: 42,
             }}
           >
-            <FiFileText /> Exportar
+            <FiFileText /> Exportar Excel
           </button>
 
           <button
@@ -226,25 +284,18 @@ export default function Reportes() {
       </div>
 
       {/* Filtros */}
-      <div
-        style={{
-          marginTop: 14,
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-        }}
-      >
+      <div style={{ marginTop: 14, display: "flex", gap: 10, flexWrap: "wrap" }}>
         <FilterBtn active={filter === "hoy"} onClick={() => setFilter("hoy")}>
           Hoy
         </FilterBtn>
-        <FilterBtn
-          active={filter === "semana"}
-          onClick={() => setFilter("semana")}
-        >
+        <FilterBtn active={filter === "ayer"} onClick={() => setFilter("ayer")}>
+          Ayer
+        </FilterBtn>
+        <FilterBtn active={filter === "ult7"} onClick={() => setFilter("ult7")}>
           Últimos 7 días
         </FilterBtn>
-        <FilterBtn active={filter === "todo"} onClick={() => setFilter("todo")}>
-          Todo
+        <FilterBtn active={filter === "mes"} onClick={() => setFilter("mes")}>
+          Este mes
         </FilterBtn>
       </div>
 
@@ -277,11 +328,9 @@ export default function Reportes() {
         />
         <KpiCard
           title="Método dominante"
-          value={kpis.dominantMethod?.name || "—"}
+          value={dominantMethod.name}
           icon={<FiCreditCard size={18} />}
-          hint={`Efectivo: ${formatCOP(kpis.efectivo)} • Transfer: ${formatCOP(
-            kpis.transferencia
-          )}`}
+          hint={`Efectivo: ${formatCOP(efectivo)} • Transfer: ${formatCOP(transferencia)}`}
         />
       </div>
 
@@ -291,19 +340,12 @@ export default function Reportes() {
           marginTop: 14,
           display: "grid",
           gap: 12,
-          gridTemplateColumns: "repeat(auto-fit, minmax(320 px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
           alignItems: "start",
         }}
       >
         {/* Left: ventas recientes */}
-        <div
-          style={{
-            background: "white",
-            border,
-            borderRadius: 16,
-            overflow: "hidden",
-          }}
-        >
+        <div style={{ background: "white", border, borderRadius: 16, overflow: "hidden" }}>
           <div
             style={{
               padding: 14,
@@ -339,16 +381,9 @@ export default function Reportes() {
                 >
                   <div>
                     <div style={{ fontWeight: 950 }}>
-                      Mesa {s.tableId ?? "—"} • {s.method || "—"}
+                      Mesa {s.tableId ?? "—"} • {prettyMethod(s.method || "—")}
                     </div>
-                    <div
-                      style={{
-                        color: "#667085",
-                        fontWeight: 700,
-                        fontSize: 13,
-                        marginTop: 2,
-                      }}
-                    >
+                    <div style={{ color: "#667085", fontWeight: 700, fontSize: 13, marginTop: 2 }}>
                       {s.waiterName ? `Mesero: ${s.waiterName} • ` : ""}
                       {s.paidAt ? new Date(s.paidAt).toLocaleString("es-CO") : ""}
                     </div>
@@ -361,25 +396,35 @@ export default function Reportes() {
           )}
         </div>
 
-        {/* Right: Top meseros + productos */}
+        {/* Right: breakdowns */}
         <div style={{ display: "grid", gap: 12 }}>
           <SideCard
             title="Top meseros"
             icon={<FiUsers />}
-            items={kpis.topWaiters.map((w) => ({
+            items={(report.byWaiter || []).slice(0, 5).map((w) => ({
               label: w.name,
-              value: formatCOP(w.total),
-              raw: w.total,
+              value: formatCOP(w.value),
+              raw: w.value,
             }))}
           />
 
           <SideCard
-            title="Productos más vendidos"
+            title="Top productos (por $ vendido)"
             icon={<FiShoppingBag />}
-            items={kpis.topProducts.map((p) => ({
+            items={(report.topProducts || []).slice(0, 7).map((p) => ({
               label: p.name,
-              value: `x${p.qty}`,
-              raw: p.qty,
+              value: formatCOP(p.value),
+              raw: p.value,
+            }))}
+          />
+
+          <SideCard
+            title="Por categoría (por $ vendido)"
+            icon={<FiTrendingUp />}
+            items={(report.byCategory || []).map((c) => ({
+              label: c.name,
+              value: formatCOP(c.value),
+              raw: c.value,
             }))}
           />
         </div>
@@ -418,18 +463,8 @@ function KpiCard({ title, value, icon, hint }) {
         boxShadow: "0 10px 22px rgba(0,0,0,0.04)",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "center",
-        }}
-      >
-        <div style={{ color: "#667085", fontWeight: 900, fontSize: 13 }}>
-          {title}
-        </div>
-
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
+        <div style={{ color: "#667085", fontWeight: 900, fontSize: 13 }}>{title}</div>
         <div
           style={{
             width: 34,
@@ -448,76 +483,37 @@ function KpiCard({ title, value, icon, hint }) {
       <div style={{ fontWeight: 950, fontSize: 22, marginTop: 10 }}>{value}</div>
 
       {hint && (
-        <div style={{ color: "#667085", fontWeight: 700, marginTop: 6, fontSize: 12 }}>
-          {hint}
-        </div>
+        <div style={{ color: "#667085", fontWeight: 700, marginTop: 6, fontSize: 12 }}>{hint}</div>
       )}
     </div>
   );
 }
 
 function SideCard({ title, icon, items }) {
-  const max = Math.max(...items.map((i) => i.raw || 0), 1);
+  const max = Math.max(...(items || []).map((i) => i.raw || 0), 1);
 
   return (
-    <div
-      style={{
-        background: "white",
-        border: "1px solid #E6EAF2",
-        borderRadius: 16,
-        padding: 14,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 10,
-          alignItems: "center",
-        }}
-      >
+    <div style={{ background: "white", border: "1px solid #E6EAF2", borderRadius: 16, padding: 14 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center" }}>
         <b>{title}</b>
         <div style={{ color: "#667085" }}>{icon}</div>
       </div>
 
       {items.length === 0 ? (
-        <div style={{ color: "#667085", fontWeight: 800, marginTop: 10 }}>
-          Sin datos en este periodo.
-        </div>
+        <div style={{ color: "#667085", fontWeight: 800, marginTop: 10 }}>Sin datos en este periodo.</div>
       ) : (
         <div style={{ marginTop: 12, display: "grid", gap: 10 }}>
           {items.map((it) => {
             const pct = Math.round(((it.raw || 0) / max) * 100);
             return (
               <div key={it.label}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    gap: 10,
-                    fontWeight: 900,
-                  }}
-                >
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10, fontWeight: 900 }}>
                   <span style={{ color: "#111827" }}>{it.label}</span>
                   <span style={{ color: "#667085" }}>{it.value}</span>
                 </div>
 
-                <div
-                  style={{
-                    marginTop: 6,
-                    height: 10,
-                    borderRadius: 999,
-                    background: "#EEF2F7",
-                    overflow: "hidden",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${pct}%`,
-                      height: "100%",
-                      background: "#2563EB",
-                    }}
-                  />
+                <div style={{ marginTop: 6, height: 10, borderRadius: 999, background: "#EEF2F7", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: "#2563EB" }} />
                 </div>
               </div>
             );
@@ -531,12 +527,8 @@ function SideCard({ title, icon, items }) {
 function EmptyState() {
   return (
     <div style={{ padding: 18, color: "#667085", fontWeight: 800 }}>
-      <div style={{ fontSize: 18, fontWeight: 950, color: "#111827" }}>
-        ¡Día nuevo, metas nuevas!
-      </div>
-      <div style={{ marginTop: 6 }}>
-        Las ventas aparecerán aquí en cuanto se registre el primer cobro.
-      </div>
+      <div style={{ fontSize: 18, fontWeight: 950, color: "#111827" }}>¡Día nuevo, metas nuevas!</div>
+      <div style={{ marginTop: 6 }}>Las ventas aparecerán aquí en cuanto se registre el primer cobro.</div>
     </div>
   );
 }

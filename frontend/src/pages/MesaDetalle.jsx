@@ -11,17 +11,20 @@ function formatCOP(value) {
     maximumFractionDigits: 0,
   });
 }
+
 function formatTimeHM(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
 }
+
 function diffMinutes(iso) {
   if (!iso) return 0;
   const start = new Date(iso).getTime();
   const now = Date.now();
   return Math.max(0, Math.floor((now - start) / 60000));
 }
+
 function formatElapsed(mins) {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -36,11 +39,11 @@ export default function MesaDetalle() {
   const [customerName, setCustomerName] = useState("");
   const [tick, setTick] = useState(0);
 
-  // ✅ UI: búsqueda + categoría seleccionada
+  // UI: búsqueda + categoría
   const [search, setSearch] = useState("");
   const [selectedCat, setSelectedCat] = useState("Todas");
 
-  // ✅ UI: modal de notas por ítem
+  // UI: modal de notas
   const [noteModal, setNoteModal] = useState({
     open: false,
     productId: null,
@@ -80,7 +83,7 @@ export default function MesaDetalle() {
     );
   }
 
-  // ✅ productos activos
+  // productos activos
   const activeProducts = (appState.products || []).filter(
     (p) => p.active !== false
   );
@@ -97,8 +100,11 @@ export default function MesaDetalle() {
     return m;
   }, [activeProducts]);
 
-  function getOrCreateOrderId() {
-    if (table.currentOrderId) return table.currentOrderId;
+  function createOrderIfNeeded() {
+    // ya existe
+    if (table.currentOrderId && appState.orders?.[table.currentOrderId]) {
+      return table.currentOrderId;
+    }
 
     const newId = `o_${Date.now()}`;
     const userName = localStorage.getItem("userName") || "Mesero";
@@ -111,8 +117,11 @@ export default function MesaDetalle() {
       sentToKitchen: false,
       kitchenDone: false,
       waiterName: userName,
-      customerName: "",
-      itemNotes: {}, // ✅ NUEVO: notas por productId
+
+      // si el mesero ya escribió cliente antes de crear pedido, lo copiamos
+      customerName: (table.pendingCustomerName || "").trim(),
+      itemNotes: {},
+      sentQtyByProduct: {}, // delta tickets
     };
 
     if (!appState.orders) appState.orders = {};
@@ -121,77 +130,154 @@ export default function MesaDetalle() {
     table.status = "occupied";
     table.currentOrderId = newId;
 
+    // limpiar pending
+    table.pendingCustomerName = "";
+
     saveState(appState);
     return newId;
   }
 
-  const orderId = getOrCreateOrderId();
-  const order = appState.orders?.[orderId];
+  const orderId = table.currentOrderId || null;
+  const order = orderId ? appState.orders?.[orderId] : null;
+
+  // asegurar map para pedidos viejos
+  if (order && !order.sentQtyByProduct) order.sentQtyByProduct = {};
+  if (order && !order.itemNotes) order.itemNotes = {};
 
   const createdAtLabel = formatTimeHM(order?.createdAt);
   const elapsedLabel = formatElapsed(diffMinutes(order?.createdAt));
 
-  // precargar input con customerName guardado
+  // precargar input (si no hay order, tomamos pending del table)
   useEffect(() => {
-    setCustomerName(order?.customerName || "");
+    if (order) setCustomerName(order.customerName || "");
+    else setCustomerName(table.pendingCustomerName || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orderId]);
 
   function addProduct(productId) {
-    const item = order.items.find((i) => i.productId === productId);
+    const oid = createOrderIfNeeded();
+    const o = appState.orders[oid];
+
+    const item = (o.items || []).find((i) => i.productId === productId);
     if (item) item.qty += 1;
-    else order.items.push({ productId, qty: 1 });
+    else o.items.push({ productId, qty: 1 });
 
     saveState(appState);
     navigate(0);
   }
 
   function inc(productId) {
-    const item = order.items.find((i) => i.productId === productId);
+    if (!order) return;
+    const item = (order.items || []).find((i) => i.productId === productId);
     if (!item) return;
+
     item.qty += 1;
     saveState(appState);
     navigate(0);
   }
 
   function dec(productId) {
-    const item = order.items.find((i) => i.productId === productId);
+    if (!order) return;
+    const item = (order.items || []).find((i) => i.productId === productId);
     if (!item) return;
 
     item.qty -= 1;
     if (item.qty <= 0) {
-      order.items = order.items.filter((x) => x.productId !== productId);
-      // opcional: mantener nota aunque se quite del pedido (yo la limpio)
+      order.items = (order.items || []).filter((x) => x.productId !== productId);
       if (order.itemNotes) delete order.itemNotes[productId];
+    }
+
+    // si quedó vacío y aún no se envió a cocina → liberar mesa y borrar order
+    if ((order.items || []).length === 0 && !order.sentToKitchen) {
+      delete appState.orders[order.id];
+      table.status = "free";
+      table.currentOrderId = null;
     }
 
     saveState(appState);
     navigate(0);
   }
 
-  function sendToKitchen() {
-    order.sentToKitchen = true;
-    saveState(appState);
-    alert("Pedido enviado a cocina (simulado).");
-    navigate("/mesas");
-  }
+  // helper: hay delta para enviar?
+  const hasNewToSend = useMemo(() => {
+    if (!order) return false;
+    const sentMap = order.sentQtyByProduct || {};
+    for (const it of order.items || []) {
+      const prevSent = Number(sentMap[it.productId] || 0);
+      const current = Number(it.qty || 0);
+      if (current - prevSent > 0) return true;
+    }
+    return false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId, tick]);
 
-  function closeTable() {
-    delete appState.orders[orderId];
-    table.status = "free";
-    table.currentOrderId = null;
+  function sendToKitchen() {
+    if (!order) {
+      alert("Agrega productos para iniciar el pedido.");
+      return;
+    }
+
+    if (!order.sentQtyByProduct) order.sentQtyByProduct = {};
+    if (!Array.isArray(appState.kitchenTickets)) appState.kitchenTickets = [];
+
+    const deltaItems = [];
+    for (const it of order.items || []) {
+      const prevSent = Number(order.sentQtyByProduct[it.productId] || 0);
+      const current = Number(it.qty || 0);
+      const diff = current - prevSent;
+
+      if (diff > 0) {
+        deltaItems.push({
+          productId: it.productId,
+          qty: diff,
+          note: (order.itemNotes?.[it.productId] || "").trim(),
+        });
+        order.sentQtyByProduct[it.productId] = prevSent + diff;
+      }
+    }
+
+    if (deltaItems.length === 0) {
+      alert("No hay productos nuevos para enviar a cocina.");
+      return;
+    }
+
+    const ticket = {
+      id: `k_${Date.now()}`,
+      orderId: order.id,
+      tableId: order.tableId,
+      createdAt: new Date().toISOString(),
+      items: deltaItems,
+      done: false,
+      waiterName: order.waiterName || "",
+      customerName: order.customerName || "",
+    };
+
+    appState.kitchenTickets.push(ticket);
+    order.sentToKitchen = true;
+
     saveState(appState);
+    alert("Comanda enviada a cocina.");
     navigate("/mesas");
   }
 
   function saveCustomer() {
-    order.customerName = customerName.trim();
+    const v = customerName.trim();
+
+    // si aún no existe order, lo guardamos en la mesa como pendiente
+    if (!order) {
+      table.pendingCustomerName = v;
+      saveState(appState);
+      alert("Cliente guardado (pendiente).");
+      return;
+    }
+
+    order.customerName = v;
     saveState(appState);
     alert("Cliente guardado.");
   }
 
-  // ✅ abrir modal para notas del ítem
   function openNoteModal(productId) {
+    if (!order) return; // no hay pedido todavía
     const p = productsById.get(productId);
     const current = order?.itemNotes?.[productId] || "";
     setNoteModal({
@@ -203,6 +289,7 @@ export default function MesaDetalle() {
   }
 
   function saveNote() {
+    if (!order) return;
     if (!noteModal.productId) return;
     if (!order.itemNotes) order.itemNotes = {};
 
@@ -216,6 +303,7 @@ export default function MesaDetalle() {
   }
 
   const itemsDetailed = useMemo(() => {
+    if (!order) return [];
     return (order.items || []).map((i) => {
       const p = productsById.get(i.productId);
       const price = p?.price ?? 0;
@@ -234,10 +322,8 @@ export default function MesaDetalle() {
 
   const total = itemsDetailed.reduce((acc, x) => acc + x.subtotal, 0);
 
-  // ✅ Filtrado por categoría + búsqueda
   const filteredProducts = useMemo(() => {
     const q = search.trim().toLowerCase();
-
     return activeProducts
       .filter((p) => {
         const cat = p.category || "Sin categoría";
@@ -259,23 +345,19 @@ export default function MesaDetalle() {
 
             <div className="topTitleRow">
               <h1>Mesa {tableId}</h1>
-              {order?.sentToKitchen ? (
-                <span className="pillSent">Enviado</span>
-              ) : null}
+              {order?.sentToKitchen ? <span className="pillSent">Enviado</span> : null}
             </div>
 
             <p className="topMeta">
-              Pedido: <b>{orderId}</b>
+              Pedido: <b>{orderId || "—"}</b>
               {order?.createdAt ? (
                 <>
                   {" "}
-                  • Inició: <b>{createdAtLabel}</b> • Tiempo:{" "}
-                  <b>{elapsedLabel}</b>
+                  • Inició: <b>{createdAtLabel}</b> • Tiempo: <b>{elapsedLabel}</b>
                 </>
               ) : null}
             </p>
 
-            {/* Cliente + búsqueda en la misma fila (aprovecha el espacio) */}
             <div className="topInputs">
               <input
                 value={customerName}
@@ -284,7 +366,7 @@ export default function MesaDetalle() {
                 className="input"
               />
 
-              <button className="btn" onClick={saveCustomer}>
+              <button className="btn" onClick={saveCustomer} type="button">
                 Guardar cliente
               </button>
 
@@ -300,11 +382,8 @@ export default function MesaDetalle() {
             </div>
           </div>
 
-          <div className="topActions">
-            <button className="btn" onClick={closeTable}>
-              Cerrar mesa
-            </button>
-          </div>
+          {/* Mesero NO puede cerrar mesa */}
+          <div className="topActions">{/* vacío */}</div>
         </div>
 
         <div className="contentGrid">
@@ -330,14 +409,11 @@ export default function MesaDetalle() {
                       {it.note ? (
                         <div className="noteLine">📝 {it.note}</div>
                       ) : (
-                        <div className="hintLine">
-                          Toca para agregar especificación
-                        </div>
+                        <div className="hintLine">Toca para agregar especificación</div>
                       )}
 
                       <div className="itemMeta">
-                        {formatCOP(it.price)} • Subtotal:{" "}
-                        <b>{formatCOP(it.subtotal)}</b>
+                        {formatCOP(it.price)} • Subtotal: <b>{formatCOP(it.subtotal)}</b>
                       </div>
                     </div>
 
@@ -374,7 +450,6 @@ export default function MesaDetalle() {
           <div className="card">
             <h2 className="cardTitle">Productos</h2>
 
-            {/* Tabs categorías */}
             <div className="catTabs">
               {categories.map((c) => (
                 <button
@@ -417,7 +492,7 @@ export default function MesaDetalle() {
           </div>
         </div>
 
-        {/* ✅ Barra inferior: total + enviar (thumb-friendly) */}
+        {/* Barra inferior */}
         <div className="bottomBar">
           <div className="bottomTotal">
             <div className="bottomTotalLabel">Total</div>
@@ -427,14 +502,15 @@ export default function MesaDetalle() {
           <button
             className="sendBtn"
             onClick={sendToKitchen}
-            disabled={order.items.length === 0 || order.sentToKitchen}
+            disabled={!order || (order.items || []).length === 0 || !hasNewToSend}
             type="button"
+            title={!order ? "Agrega productos para iniciar el pedido" : !hasNewToSend ? "No hay nuevos productos para enviar" : ""}
           >
-            {order.sentToKitchen ? "Pedido enviado" : "Enviar a cocina"}
+            {!order ? "Agrega productos" : hasNewToSend ? "Enviar a cocina" : "Sin nuevos para enviar"}
           </button>
         </div>
 
-        {/* ✅ Modal notas */}
+        {/* Modal notas */}
         {noteModal.open && (
           <div
             className="modalOverlay"
@@ -449,9 +525,7 @@ export default function MesaDetalle() {
               <textarea
                 className="modalTextarea"
                 value={noteModal.value}
-                onChange={(e) =>
-                  setNoteModal((s) => ({ ...s, value: e.target.value }))
-                }
+                onChange={(e) => setNoteModal((s) => ({ ...s, value: e.target.value }))}
                 placeholder='Ej: "Sin hielo", "Término medio", "Salsa aparte"...'
                 rows={4}
               />
@@ -460,12 +534,7 @@ export default function MesaDetalle() {
                 <button
                   className="btn"
                   onClick={() =>
-                    setNoteModal({
-                      open: false,
-                      productId: null,
-                      name: "",
-                      value: "",
-                    })
+                    setNoteModal({ open: false, productId: null, name: "", value: "" })
                   }
                   type="button"
                 >
