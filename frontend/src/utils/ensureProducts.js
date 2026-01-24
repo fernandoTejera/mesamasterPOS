@@ -1,16 +1,57 @@
 import { PRODUCTS } from "../data/products";
 
+/**
+ * Asegura que el estado tenga products.
+ * - Si state es null/undefined: crea uno mínimo.
+ * - Si state.products no existe o está vacío: lo inicializa con PRODUCTS (data/demo).
+ * - Devuelve un NUEVO objeto si hubo cambios (para poder guardar).
+ */
 export function ensureProducts(state) {
-  if (!state) return state;
+  // Si no hay state, crea uno básico
+  if (!state) {
+    return {
+      tables: [],
+      orders: {},
+      sales: [],
+      products: PRODUCTS.map((p) => ({ ...p })),
+    };
+  }
 
-  // Si ya hay productos en el estado, no tocar
-  if (Array.isArray(state.products) && state.products.length > 0) return state;
+  let changed = false;
+  const next = { ...state };
 
-  // Si no existe, lo inicializamos desde PRODUCTS
-  state.products = PRODUCTS.map((p) => ({
-    ...p,
-    active: true, // importante para desactivar en vez de borrar
-  }));
+  // products
+  if (!Array.isArray(next.products) || next.products.length === 0) {
+    next.products = PRODUCTS.map((p) => ({ ...p }));
+    changed = true;
+  }
 
-  return state;
+  // orders
+  if (!next.orders || typeof next.orders !== "object") {
+    next.orders = {};
+    changed = true;
+  }
+
+  // sales
+  if (!Array.isArray(next.sales)) {
+    next.sales = [];
+    changed = true;
+  }
+
+  // tables (si no existe)
+  if (!Array.isArray(next.tables)) {
+    next.tables = [];
+    changed = true;
+  }
+  // categories
+  if (!Array.isArray(next.categories) || next.categories.length === 0) {
+    // Sacamos categorías únicas desde products
+    const uniq = Array.from(
+      new Set((next.products || []).map((p) => p.category).filter(Boolean)),
+    );
+    next.categories = uniq.length ? uniq : ["Comidas", "Bebidas"];
+    changed = true;
+  }
+
+  return changed ? next : state;
 }

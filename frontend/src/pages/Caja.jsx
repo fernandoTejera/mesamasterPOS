@@ -19,10 +19,13 @@ export default function Caja() {
   const [paymentNote, setPaymentNote] = useState("");
   const [msg, setMsg] = useState("");
 
-  // ✅ cargar estado y asegurar products (DENTRO del componente)
-  const raw = loadState();
-  const state = ensureProducts(raw);
-  if (raw !== state) saveState(state);
+  // ✅ Estado reactivo
+  const [state, setState] = useState(() => {
+    const raw = loadState();
+    const fixed = ensureProducts(raw);
+    if (raw !== fixed) saveState(fixed);
+    return fixed;
+  });
 
   const occupiedTables = useMemo(() => {
     if (!state) return [];
@@ -36,24 +39,28 @@ export default function Caja() {
     return state.orders?.[table.currentOrderId] || null;
   }, [state, selectedTableId]);
 
-  function getProduct(productId) {
-    return (state.products || []).find((p) => p.id === productId);
-  }
+  const productsById = useMemo(() => {
+    const map = new Map();
+    (state?.products || []).forEach((p) => map.set(p.id, p));
+    return map;
+  }, [state]);
 
   const itemsDetailed = useMemo(() => {
     if (!currentOrder) return [];
     return (currentOrder.items || []).map((i) => {
-      const p = getProduct(i.productId);
+      const p = productsById.get(i.productId);
+      const price = p?.price ?? 0;
+      const note = currentOrder?.itemNotes?.[i.productId] || "";
       return {
         productId: i.productId,
         name: p?.name ?? "Producto",
-        price: p?.price ?? 0,
+        price,
         qty: i.qty,
-        subtotal: (p?.price ?? 0) * i.qty,
+        note,
+        subtotal: price * i.qty,
       };
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrder]);
+  }, [currentOrder, productsById]);
 
   const total = itemsDetailed.reduce((acc, x) => acc + x.subtotal, 0);
 
@@ -71,54 +78,74 @@ export default function Caja() {
       return;
     }
 
-    const order = state.orders?.[table.currentOrderId];
+    const orderId = table.currentOrderId;
+    const order = state.orders?.[orderId];
+
     if (!order) {
       setMsg("Pedido no encontrado.");
       return;
     }
 
-    // ✅ total calculado desde state.products
     const totalValue = (order.items || []).reduce((acc, it) => {
-      const p = (state.products || []).find((x) => x.id === it.productId);
+      const p = productsById.get(it.productId);
       return acc + (p?.price ?? 0) * it.qty;
     }, 0);
 
-    // Guardar info de pago en el pedido
-    order.paid = true;
-    order.payment = {
-      method: paymentMethod,
-      note: paymentNote.trim(),
-      paidAt: new Date().toISOString(),
-      total: totalValue,
-    };
+    const paidAt = new Date().toISOString();
+    const note = paymentNote.trim();
 
     const waiterName = order.waiterName || "Sin mesero";
+    const customerName = order.customerName || "";
 
-    // Guardar en historial de ventas
-    if (!Array.isArray(state.sales)) state.sales = [];
-    state.sales.push({
+    // ✅ guardar pago dentro del pedido (por consistencia)
+    const updatedOrder = {
+      ...order,
+      paid: true,
+      payment: {
+        method: paymentMethod,
+        note,
+        paidAt,
+        total: totalValue,
+      },
+    };
+
+    // ✅ venta con TODO: items + notas + cliente + mesero
+    const newSale = {
       id: `s_${Date.now()}`,
       tableId: table.id,
-      orderId: order.id,
+      orderId: updatedOrder.id,
       total: totalValue,
       method: paymentMethod,
-      note: paymentNote.trim(),
-      createdAt: order.createdAt,
-      paidAt: order.payment.paidAt,
-      items: order.items,
+      note,
+      createdAt: updatedOrder.createdAt,
+      paidAt,
+      items: updatedOrder.items,
+      itemNotes: updatedOrder.itemNotes || {},   // ✅ AQUÍ
       waiterName,
-    });
+      customerName,                              // ✅ AQUÍ
+    };
 
-    // Liberar mesa
-    table.status = "free";
-    table.currentOrderId = null;
+    const nextTables = (state.tables || []).map((t) =>
+      t.id === table.id ? { ...t, status: "free", currentOrderId: null } : t
+    );
 
-    // MVP: borrar pedido activo
-    delete state.orders[order.id];
+    const nextOrders = { ...(state.orders || {}) };
+    delete nextOrders[updatedOrder.id];
 
-    saveState(state);
+    const nextSales = Array.isArray(state.sales)
+      ? [...state.sales, newSale]
+      : [newSale];
 
-    // Reset UI
+    const nextState = {
+      ...state,
+      tables: nextTables,
+      orders: nextOrders,
+      sales: nextSales,
+    };
+
+    saveState(nextState);
+    setState(nextState);
+
     setPaymentNote("");
     setSelectedTableId(null);
     setMsg("✅ Cuenta cerrada y mesa liberada.");
@@ -135,7 +162,6 @@ export default function Caja() {
 
   return (
     <div style={{ padding: 24, background: "#f6f8fc", minHeight: "100vh" }}>
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
         <div>
           <h1 style={{ marginTop: 0 }}>Caja</h1>
@@ -160,7 +186,6 @@ export default function Caja() {
         </button>
       </div>
 
-      {/* Contenido */}
       <div
         style={{
           marginTop: 16,
@@ -170,7 +195,7 @@ export default function Caja() {
           alignItems: "start",
         }}
       >
-        {/* Lista de mesas */}
+        {/* Mesas */}
         <div
           style={{
             background: "white",
@@ -241,13 +266,36 @@ export default function Caja() {
                       padding: 10,
                       border: "1px solid #eef2f7",
                       borderRadius: 12,
+                      alignItems: "flex-start",
                     }}
                   >
-                    <div style={{ fontWeight: 800 }}>
-                      {it.name}{" "}
-                      <span style={{ color: "#667085" }}>x{it.qty}</span>
+                    <div style={{ display: "grid", gap: 6 }}>
+                      <div style={{ fontWeight: 900 }}>
+                        {it.name}{" "}
+                        <span style={{ color: "#667085" }}>x{it.qty}</span>
+                      </div>
+
+                      {/* ✅ Nota visible en caja */}
+                      {it.note && (
+                        <div
+                          style={{
+                            fontWeight: 900,
+                            fontSize: 12,
+                            color: "#9a3412",
+                            background: "#fff7ed",
+                            border: "1px solid #fed7aa",
+                            padding: "6px 10px",
+                            borderRadius: 12,
+                            width: "fit-content",
+                            maxWidth: 420,
+                          }}
+                        >
+                          📝 {it.note}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ fontWeight: 900 }}>
+
+                    <div style={{ fontWeight: 950 }}>
                       {formatCOP(it.subtotal)}
                     </div>
                   </div>
@@ -261,16 +309,17 @@ export default function Caja() {
                   borderTop: "1px solid #eef2f7",
                   display: "flex",
                   justifyContent: "space-between",
-                  fontWeight: 900,
+                  fontWeight: 950,
+                  fontSize: 18,
                 }}
               >
                 <span>Total</span>
                 <span>{formatCOP(total)}</span>
               </div>
 
-              {/* Pago + cierre */}
+              {/* Pago */}
               <div style={{ marginTop: 14, display: "grid", gap: 10 }}>
-                <div style={{ fontWeight: 900 }}>Método de pago</div>
+                <div style={{ fontWeight: 950 }}>Método de pago</div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <button
@@ -282,7 +331,7 @@ export default function Caja() {
                       background:
                         paymentMethod === "efectivo" ? "#dbeafe" : "white",
                       cursor: "pointer",
-                      fontWeight: 800,
+                      fontWeight: 900,
                     }}
                   >
                     Efectivo
@@ -297,7 +346,7 @@ export default function Caja() {
                       background:
                         paymentMethod === "transferencia" ? "#dbeafe" : "white",
                       cursor: "pointer",
-                      fontWeight: 800,
+                      fontWeight: 900,
                     }}
                   >
                     Transferencia
@@ -323,11 +372,11 @@ export default function Caja() {
                     marginTop: 6,
                     padding: 12,
                     borderRadius: 12,
-                    border: "1px solid #2563eb",
-                    background: "#2563eb",
+                    border: "1px solid #16a34a",
+                    background: "#16a34a",
                     color: "white",
                     cursor: "pointer",
-                    fontWeight: 900,
+                    fontWeight: 950,
                     opacity: itemsDetailed.length === 0 ? 0.6 : 1,
                   }}
                 >
@@ -335,7 +384,7 @@ export default function Caja() {
                 </button>
 
                 {msg && (
-                  <p style={{ margin: 0, fontWeight: 800, color: "#14532d" }}>
+                  <p style={{ margin: 0, fontWeight: 900, color: "#14532d" }}>
                     {msg}
                   </p>
                 )}

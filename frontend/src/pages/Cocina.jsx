@@ -1,14 +1,47 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../auth/auth";
 import { loadState, saveState } from "../utils/storage";
 import { ensureProducts } from "../utils/ensureProducts";
 
+function formatTimeHM(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+}
+
+function elapsedMinutes(iso) {
+  if (!iso) return 0;
+  const start = new Date(iso).getTime();
+  const now = Date.now();
+  return Math.max(0, Math.floor((now - start) / 60000));
+}
+
+function elapsedLabel(mins) {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h <= 0) return `${m}m`;
+  return `${h}h ${String(m).padStart(2, "0")}m`;
+}
+
+// Verde → Amarillo → Rojo
+function urgencyColor(mins) {
+  if (mins >= 15) return { bg: "#fee2e2", text: "#991b1b", border: "#ef4444" };
+  if (mins >= 8) return { bg: "#fef3c7", text: "#92400e", border: "#f59e0b" };
+  return { bg: "#dcfce7", text: "#166534", border: "#22c55e" };
+}
+
 export default function Cocina() {
   const navigate = useNavigate();
   const [refresh, setRefresh] = useState(0);
 
-  // ✅ cargar estado y asegurar productos (DENTRO del componente)
+  // refresco cada 30s para cronómetro
+  useEffect(() => {
+    const id = setInterval(() => setRefresh((x) => x + 1), 1000 * 30);
+    return () => clearInterval(id);
+  }, []);
+
+  // cargar estado
   const stateRaw = loadState();
   const state = ensureProducts(stateRaw);
   if (stateRaw !== state) saveState(state);
@@ -18,26 +51,53 @@ export default function Cocina() {
     navigate("/login");
   }
 
-  const ordersToShow = useMemo(() => {
-    if (!state) return [];
+ const ordersToShow = useMemo(() => {
+  if (!state) return [];
 
-    const allOrders = Object.values(state.orders || {});
-    return allOrders
-      .filter((o) => o.sentToKitchen === true && o.kitchenDone !== true)
-      .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-  }, [state, refresh]);
+  const allOrders = Object.values(state.orders || {})
+    .filter((o) => o.sentToKitchen === true && o.kitchenDone !== true);
+
+  // 2 = rojo, 1 = amarillo, 0 = verde
+  const bucket = (createdAt) => {
+    const mins = elapsedMinutes(createdAt);
+    if (mins >= 15) return 2;
+    if (mins >= 8) return 1;
+    return 0;
+  };
+
+  return allOrders.sort((a, b) => {
+    const ba = bucket(a.createdAt);
+    const bb = bucket(b.createdAt);
+
+    // 1) prioridad por color: rojos primero
+    if (ba !== bb) return bb - ba;
+
+    // 2) dentro del mismo color: FIFO (más antiguo primero)
+    return new Date(a.createdAt) - new Date(b.createdAt);
+  });
+}, [state, refresh]);
+
+
+  const nowLabel = useMemo(() => {
+    const d = new Date();
+    return d.toLocaleTimeString("es-CO", { hour: "2-digit", minute: "2-digit" });
+  }, [refresh]);
 
   if (!state) {
     return (
       <div style={{ padding: 24 }}>
         <h1>Cocina</h1>
-        <p>No hay estado guardado (localStorage vacío).</p>
+        <p>No hay estado guardado.</p>
       </div>
     );
   }
 
   function getProduct(productId) {
     return (state.products || []).find((p) => p.id === productId);
+  }
+
+  function getNote(order, productId) {
+    return order?.itemNotes?.[productId]?.trim() || "";
   }
 
   function finishOrder(orderId) {
@@ -50,135 +110,206 @@ export default function Cocina() {
   }
 
   return (
-    <div style={{ padding: 24, background: "#f6f8fc", minHeight: "100vh" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-        <h1 style={{ marginTop: 0 }}>Cocina</h1>
+    <div style={{ padding: 18, background: "#f8fafc", minHeight: "100vh" }}>
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "center",
+        }}
+      >
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 950 }}>Cocina</h1>
+          <p style={{ margin: "6px 0 0", color: "#667085", fontWeight: 700 }}>
+            Órdenes activas: <b>{ordersToShow.length}</b> • Hora: <b>{nowLabel}</b>
+          </p>
+        </div>
+
         <button
           onClick={handleLogout}
           style={{
-            padding: 10,
+            padding: "10px 12px",
             borderRadius: 12,
             border: "1px solid #e6eaf2",
             background: "white",
             cursor: "pointer",
-            fontWeight: 800,
+            fontWeight: 900,
           }}
         >
           Cerrar sesión
         </button>
       </div>
 
-      <p style={{ color: "#667085", marginTop: 6 }}>
-        Pedidos enviados por los meseros.
-      </p>
-
       {ordersToShow.length === 0 ? (
         <div
           style={{
             marginTop: 16,
             background: "white",
-            border: "1px solid #e6eaf2",
+            border: "1px dashed #e6eaf2",
             borderRadius: 16,
             padding: 16,
+            color: "#667085",
+            fontWeight: 800,
           }}
         >
-          <b>No hay pedidos pendientes.</b>
+          ✅ No hay pedidos pendientes.
         </div>
       ) : (
         <div
           style={{
-            marginTop: 16,
+            marginTop: 14,
             display: "grid",
-            gap: 14,
-            gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+            gap: 12,
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           }}
         >
-          {ordersToShow.map((o) => (
-            <div
-              key={o.id}
-              style={{
-                background: "white",
-                border: "1px solid #e6eaf2",
-                borderRadius: 16,
-                padding: 16,
-                boxShadow: "0 10px 22px rgba(0,0,0,0.06)",
-              }}
-            >
+          {ordersToShow.map((o) => {
+            const mins = elapsedMinutes(o.createdAt);
+            const urgency = urgencyColor(mins);
+
+            return (
               <div
+                key={o.id}
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  alignItems: "flex-start",
+                  background: "white",
+                  border: "1px solid #e6eaf2",
+                  borderRadius: 16,
+                  padding: 14,
+                  boxShadow: "0 10px 22px rgba(0,0,0,0.05)",
+                  position: "relative",
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: 900, fontSize: 16 }}>
-                    Mesa {o.tableId}
-                  </div>
-                  <div style={{ color: "#667085", fontSize: 13 }}>
-                    Pedido: {o.id}
-                  </div>
-                </div>
-
+                {/* barra urgencia */}
                 <div
                   style={{
-                    padding: "6px 10px",
-                    borderRadius: 999,
-                    fontWeight: 800,
-                    fontSize: 12,
-                    color: "#1d4ed8",
-                    background: "#dbeafe",
-                    border: "1px solid #e6eaf2",
+                    position: "absolute",
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    width: 6,
+                    background: urgency.border,
+                  }}
+                />
+
+                {/* header tarjeta */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    paddingLeft: 6,
                   }}
                 >
-                  EN PREPARACIÓN
-                </div>
-              </div>
-
-              <div style={{ marginTop: 12, display: "grid", gap: 8 }}>
-                {(o.items || []).map((it) => {
-                  const p = getProduct(it.productId);
-                  return (
+                  <div>
+                    <div style={{ fontWeight: 950, fontSize: 18 }}>
+                      Mesa {o.tableId}
+                    </div>
                     <div
-                      key={it.productId}
                       style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        gap: 10,
-                        padding: 10,
-                        border: "1px solid #eef2f7",
-                        borderRadius: 12,
+                        color: "#667085",
+                        fontWeight: 700,
+                        fontSize: 12,
                       }}
                     >
-                      <div style={{ fontWeight: 800 }}>
-                        {p?.name ?? "Producto"}
-                      </div>
-                      <div style={{ fontWeight: 900 }}>x{it.qty}</div>
+                      Pedido {o.id} • {formatTimeHM(o.createdAt)}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
 
-              <div style={{ marginTop: 12, display: "flex", gap: 10 }}>
-                <button
-                  onClick={() => finishOrder(o.id)}
+                  <div
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: 999,
+                      fontWeight: 950,
+                      fontSize: 12,
+                      color: urgency.text,
+                      background: urgency.bg,
+                      border: `1px solid ${urgency.border}`,
+                    }}
+                  >
+                    ⏱ {elapsedLabel(mins)}
+                  </div>
+                </div>
+
+                {/* items + notas */}
+                <div
                   style={{
-                    flex: 1,
-                    padding: 10,
-                    borderRadius: 12,
-                    border: "1px solid #e6eaf2",
-                    background: "#2563eb",
-                    color: "white",
-                    cursor: "pointer",
-                    fontWeight: 900,
+                    marginTop: 12,
+                    display: "grid",
+                    gap: 8,
+                    paddingLeft: 6,
                   }}
                 >
-                  Despachar
-                </button>
+                  {(o.items || []).map((it) => {
+                    const p = getProduct(it.productId);
+                    const note = getNote(o, it.productId);
+
+                    return (
+                      <div
+                        key={it.productId}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 10,
+                          padding: "10px 12px",
+                          border: "1px solid #eef2f7",
+                          borderRadius: 14,
+                          alignItems: "center",
+                        }}
+                      >
+                        <div style={{ display: "grid", gap: 6 }}>
+                          <div style={{ fontWeight: 950, fontSize: 16 }}>
+                            {(p?.name || "Producto").toUpperCase()}
+                          </div>
+
+                          {note && (
+                            <div
+                              style={{
+                                fontWeight: 900,
+                                fontSize: 12,
+                                color: "#9a3412",
+                                background: "#fff7ed",
+                                border: "1px solid #fed7aa",
+                                padding: "6px 10px",
+                                borderRadius: 12,
+                                maxWidth: 220,
+                              }}
+                            >
+                              📝 {note}
+                            </div>
+                          )}
+                        </div>
+
+                        <div style={{ fontWeight: 950, fontSize: 16 }}>
+                          x{it.qty}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* acción */}
+                <div style={{ marginTop: 12, paddingLeft: 6 }}>
+                  <button
+                    onClick={() => finishOrder(o.id)}
+                    style={{
+                      width: "100%",
+                      padding: 12,
+                      borderRadius: 14,
+                      border: "1px solid #16a34a",
+                      background: "#16a34a",
+                      color: "white",
+                      cursor: "pointer",
+                      fontWeight: 950,
+                      fontSize: 15,
+                    }}
+                  >
+                    ✅ Despachar
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

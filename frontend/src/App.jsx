@@ -10,6 +10,7 @@ import Reportes from "./pages/Reportes";
 import Usuarios from "./pages/Usuarios";
 import ConfigMesas from "./pages/ConfigMesas";
 import Productos from "./pages/Productos";
+import Historial from "./pages/Historial";
 
 export default function App() {
   return (
@@ -19,6 +20,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
 
         <Route path="/login" element={<Login />} />
+
         <Route
           path="/mesas/:id"
           element={
@@ -36,6 +38,7 @@ export default function App() {
             </RoleRoute>
           }
         />
+
         <Route
           path="/cocina"
           element={
@@ -44,6 +47,7 @@ export default function App() {
             </RoleRoute>
           }
         />
+
         <Route
           path="/gerente"
           element={
@@ -52,6 +56,7 @@ export default function App() {
             </RoleRoute>
           }
         />
+
         <Route
           path="/caja"
           element={
@@ -60,6 +65,17 @@ export default function App() {
             </RoleRoute>
           }
         />
+
+        {/* ✅ NUEVO: Historial */}
+        <Route
+          path="/historial"
+          element={
+            <RoleRoute allow={["gerente"]}>
+              <Historial />
+            </RoleRoute>
+          }
+        />
+
         <Route
           path="/usuarios"
           element={
@@ -68,6 +84,7 @@ export default function App() {
             </RoleRoute>
           }
         />
+
         <Route
           path="/config-mesas"
           element={
@@ -94,10 +111,11 @@ export default function App() {
             </RoleRoute>
           }
         />
+
         {/* Ruta no encontrada */}
         <Route
           path="*"
-          element={<h1 style={{ padding: 24 }}>404 - No econtrado</h1>}
+          element={<h1 style={{ padding: 24 }}>404 - No encontrado</h1>}
         />
       </Routes>
     </BrowserRouter>

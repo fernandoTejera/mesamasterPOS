@@ -1,8 +1,8 @@
 .detailPage {
-  height: 100dvh;            /* clave en móvil */
+  height: 100dvh;
   background: #f6f8fc;
   padding: 16px;
-  overflow: hidden;          /* la página NO scrollea, scrollean los paneles */
+  overflow: hidden;
 }
 
 .detailContainer {
@@ -11,9 +11,11 @@
   margin: 0 auto;
   display: grid;
   gap: 16px;
-  grid-template-rows: auto 1fr; /* top fijo + contenido ocupa el resto */
+  grid-template-rows: auto 1fr auto; /* top + contenido + bottom bar */
+  min-height: 0;
 }
 
+/* TOP */
 .detailTop {
   display: flex;
   justify-content: space-between;
@@ -27,18 +29,79 @@
   box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
 }
 
+.backLink {
+  display: inline-block;
+  text-decoration: none;
+  font-weight: 900;
+  color: #111827;
+}
+
+.topTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
 .detailTop h1 {
-  margin: 8px 0 0;
+  margin: 0;
   font-size: 20px;
   font-weight: 900;
   color: #101828;
 }
 
-.detailTop p {
+.pillSent {
+  background: #e0f2fe;
+  color: #075985;
+  border: 1px solid #bae6fd;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 900;
+  font-size: 12px;
+}
+
+.topMeta {
   margin: 6px 0 0;
   color: #667085;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 13px;
+}
+
+.topInputs {
+  margin-top: 10px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.input {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e6eaf2;
+  outline: none;
+  min-width: 240px;
+}
+
+.searchWrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid #e6eaf2;
+  background: #ffffff;
+}
+
+.searchIcon {
+  opacity: 0.7;
+}
+
+.searchInput {
+  border: 0;
+  outline: none;
+  width: 220px;
+  font-weight: 700;
 }
 
 .topActions {
@@ -46,35 +109,38 @@
   gap: 10px;
 }
 
+/* BUTTONS */
 .btn {
   border: 1px solid #e6eaf2;
   background: white;
   border-radius: 12px;
   padding: 10px 12px;
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .btn:hover {
   background: #f2f4f7;
 }
 
-.btnPrimary {
-  background: #2563eb;
-  border-color: #2563eb;
+.btnGreen {
+  background: #16a34a;
+  border-color: #16a34a;
   color: white;
 }
 
-.btnPrimary:hover {
-  background: #1d4ed8;
+.btnGreen:hover {
+  background: #15803d;
 }
 
+/* GRID */
 .contentGrid {
   display: grid;
-  grid-template-columns: 1.2fr 0.8fr;
+  grid-template-columns: 1.1fr 0.9fr;
   gap: 16px;
-  min-height: 0; /* CLAVE: permite que los hijos puedan scrollear */
+  min-height: 0;
 }
+
 .card {
   background: white;
   border: 1px solid #e6eaf2;
@@ -84,14 +150,13 @@
 
   display: flex;
   flex-direction: column;
-  min-height: 0; /* CLAVE */
+  min-height: 0;
 }
-
 
 .cardTitle {
   margin: 0 0 12px;
   font-size: 16px;
-  font-weight: 900;
+  font-weight: 950;
   color: #101828;
 }
 
@@ -99,101 +164,313 @@
   overflow: auto;
   padding-right: 6px;
   min-height: 0;
-  flex: 1; /* CLAVE: se estira y activa scroll */
+  flex: 1;
 }
 
+.mutedText {
+  color: #667085;
+  font-weight: 700;
+}
+
+/* PEDIDO */
 .itemRow {
   display: grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
+  gap: 12px;
   padding: 12px;
   border: 1px solid #eef2f7;
-  border-radius: 12px;
+  border-radius: 14px;
   margin-bottom: 10px;
+  background: white;
+}
+
+.itemRowClickable {
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.itemRowClickable:hover {
+  background: #f8fafc;
 }
 
 .itemName {
-  font-weight: 900;
+  font-weight: 950;
+  color: #111827;
+}
+
+.noteLine {
+  margin-top: 4px;
+  font-weight: 800;
+  font-size: 12px;
+  color: #111827;
+}
+
+.hintLine {
+  margin-top: 4px;
+  font-weight: 800;
+  font-size: 12px;
+  color: #94a3b8;
 }
 
 .itemMeta {
+  margin-top: 6px;
   color: #667085;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .qtyBox {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   align-items: center;
 }
 
 .qtyBtn {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
+  width: 46px;         /* ✅ más grande */
+  height: 46px;
+  border-radius: 14px; /* ✅ más “dedazo-friendly” */
   border: 1px solid #e6eaf2;
-  background: white;
+  background: #f8fafc; /* ✅ fondo sutil */
   cursor: pointer;
-  font-weight: 900;
+  font-weight: 950;
+  font-size: 20px;
 }
 
-.totalRow {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #eef2f7;
+.qtyBtn:hover {
+  background: #eef2f7;
+}
+
+.qtyNum {
+  font-size: 16px;
+  min-width: 22px;
+  text-align: center;
+}
+
+/* CATEGORÍAS */
+.catTabs {
   display: flex;
-  justify-content: space-between;
-  font-weight: 900;
-}
-
-.productBtn {
-  width: 100%;
-  padding: 12px;
-  border-radius: 12px;
-  border: 1px solid #eef2f7;
-  background: white;
-  text-align: left;
-  cursor: pointer;
+  gap: 8px;
+  overflow: auto;
+  padding-bottom: 10px;
   margin-bottom: 10px;
 }
 
-.productBtn:hover {
+.catTab {
+  white-space: nowrap;
+  border: 1px solid #e6eaf2;
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 900;
+  color: #111827;
+}
+
+.catTab:hover {
+  background: #f2f4f7;
+}
+
+.catTabActive {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+/* GRID PRODUCTOS */
+.productsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.productTile {
+  border: 1px solid #eef2f7;
+  background: white;
+  border-radius: 14px;
+  padding: 12px;
+  cursor: pointer;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+}
+
+.productTile:hover {
   background: #f8fafc;
 }
 
-/* ✅ Scroll interno confiable en móvil */
+.tileTop {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: center;
+}
+
+.tileBadge {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: #eef2ff;
+  border: 1px solid #e0e7ff;
+  display: grid;
+  place-items: center;
+  font-weight: 950;
+  color: #3730a3;
+}
+
+.tileName {
+  font-weight: 950;
+  color: #111827;
+  line-height: 1.1;
+}
+
+.tilePrice {
+  font-weight: 950;
+  color: #111827;
+}
+
+/* ✅ BOTTOM BAR: total grande + enviar */
+.bottomBar {
+  background: white;
+  border: 1px solid #e6eaf2;
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.bottomTotalLabel {
+  font-weight: 900;
+  color: #667085;
+  font-size: 12px;
+}
+
+.bottomTotalValue {
+  font-weight: 950;
+  font-size: 22px; /* ✅ más grande para evitar errores */
+  color: #111827;
+}
+
+.sendBtn {
+  border: 1px solid #16a34a;
+  background: #16a34a;  /* ✅ verde vibrante */
+  color: white;
+  border-radius: 14px;
+  padding: 14px 16px;
+  cursor: pointer;
+  font-weight: 950;
+  font-size: 16px;
+  min-width: 210px;
+}
+
+.sendBtn:hover {
+  background: #15803d;
+}
+
+.sendBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* MODAL */
+.modalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modalCard {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  border-radius: 16px;
+  border: 1px solid #e6eaf2;
+  padding: 16px;
+  box-shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
+}
+
+.modalTitle {
+  font-weight: 950;
+  font-size: 16px;
+  color: #111827;
+}
+
+.modalSubtitle {
+  margin-top: 4px;
+  color: #667085;
+  font-weight: 800;
+}
+
+.modalTextarea {
+  margin-top: 12px;
+  width: 100%;
+  border: 1px solid #e6eaf2;
+  border-radius: 12px;
+  padding: 12px;
+  outline: none;
+  font-weight: 700;
+  resize: none;
+}
+
+.modalActions {
+  margin-top: 12px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.modalHint {
+  margin-top: 10px;
+  color: #94a3b8;
+  font-weight: 800;
+  font-size: 12px;
+}
+
+/* MOBILE */
 @media (max-width: 900px) {
   .detailPage {
-    height: auto;        /* en móvil dejamos que la página pueda crecer */
-    min-height: 100dvh;  /* pero que mínimo ocupe la pantalla */
-    overflow: auto;      /* móvil: permite scroll normal de la página */
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
   }
 
   .detailContainer {
-    height: auto;        /* quitar height fija en móvil */
-    min-height: 100%;
-    grid-template-rows: auto auto; /* top + contenido */
+    height: auto;
+    grid-template-rows: auto auto auto;
+  }
+
+  .contentGrid {
+    grid-template-columns: 1fr;
   }
 
   .scrollArea {
-    max-height: 50dvh;             /* límite para que sí haga scroll */
-    -webkit-overflow-scrolling: touch; /* iOS smooth scroll */
+    max-height: 46dvh;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .productsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sendBtn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bottomBar {
+    position: sticky;
+    bottom: 10px;
   }
 }
 
 @media (max-width: 520px) {
-  .detailTop {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
   .topActions {
-    justify-content: stretch;
-  }
-
-  .topActions .btn {
     width: 100%;
   }
 }
-

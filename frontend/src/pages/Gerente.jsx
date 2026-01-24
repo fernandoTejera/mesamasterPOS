@@ -11,6 +11,7 @@ import {
   FiGrid,
   FiLogOut,
   FiUser,
+  FiClock,
 } from "react-icons/fi";
 import "./gerente.css";
 
@@ -125,6 +126,12 @@ export default function Gerente() {
         />
 
         <ActionCard
+          icon={<FiClock size={32} />}
+          label="Historial de ventas"
+          onClick={() => navigate("/historial")}
+        />
+
+        <ActionCard
           icon={<FiGrid size={32} />}
           label="Configurar mesas"
           onClick={() => navigate("/config-mesas")}
@@ -159,7 +166,9 @@ export default function Gerente() {
 
         <div className="summaryRow">
           <span className="summaryLabel">Transferencia</span>
-          <span className="summaryValue">{formatCOP(summary.transferToday)}</span>
+          <span className="summaryValue">
+            {formatCOP(summary.transferToday)}
+          </span>
         </div>
       </section>
     </div>

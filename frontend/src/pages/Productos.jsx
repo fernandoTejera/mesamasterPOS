@@ -15,12 +15,20 @@ export default function Productos() {
   const navigate = useNavigate();
   const [refresh, setRefresh] = useState(0);
 
-  const stateRaw = loadState();
-  const state = ensureProducts(stateRaw);
-  if (stateRaw !== state) saveState(state);
+  // ✅ Cargar state una sola vez de forma estable
+  const state = useMemo(() => {
+    const raw = loadState();
+    const fixed = ensureProducts(raw);
+    if (raw !== fixed) saveState(fixed);
+    return fixed;
+  }, []);
+
+  const categories = state.categories || [];
 
   const [q, setQ] = useState("");
   const [onlyActive, setOnlyActive] = useState(true);
+
+  const [newCategory, setNewCategory] = useState("");
 
   const [form, setForm] = useState({
     id: null,
@@ -36,7 +44,7 @@ export default function Productos() {
     const list = state?.products || [];
     const filtered = list.filter((p) => {
       const match =
-        p.name.toLowerCase().includes(q.toLowerCase()) ||
+        (p.name || "").toLowerCase().includes(q.toLowerCase()) ||
         (p.category || "").toLowerCase().includes(q.toLowerCase());
       const activeOk = onlyActive ? p.active !== false : true;
       return match && activeOk;
@@ -76,6 +84,25 @@ export default function Productos() {
     });
   }
 
+  function addCategory() {
+    setMsg("");
+    const name = newCategory.trim();
+    if (!name) return setMsg("Escribe el nombre de la categoría.");
+
+    const exists = (state.categories || []).some(
+      (c) => String(c).toLowerCase() === name.toLowerCase()
+    );
+    if (exists) return setMsg("Esa categoría ya existe.");
+
+    state.categories = [...(state.categories || []), name];
+    saveState(state);
+
+    setNewCategory("");
+    setForm((s) => ({ ...s, category: name })); // ✅ se selecciona al crear
+    setRefresh((x) => x + 1);
+    setMsg("✅ Categoría añadida.");
+  }
+
   function saveProduct() {
     setMsg("");
 
@@ -110,6 +137,14 @@ export default function Productos() {
         price: priceNum,
         active: true,
       });
+    }
+
+    // ✅ si la categoría no existe aún, la añadimos automáticamente
+    const catExists = (state.categories || []).some(
+      (c) => String(c).toLowerCase() === category.toLowerCase()
+    );
+    if (!catExists) {
+      state.categories = [...(state.categories || []), category];
     }
 
     state.products = list;
@@ -313,19 +348,58 @@ export default function Productos() {
               }}
             />
 
-            <input
+            {/* ✅ Categoría por SELECT */}
+            <select
               value={form.category}
               onChange={(e) =>
                 setForm((s) => ({ ...s, category: e.target.value }))
               }
-              placeholder="Categoría (ej: Comida, Bebidas)"
               style={{
                 padding: 12,
                 borderRadius: 12,
                 border: "1px solid #e6eaf2",
                 outline: "none",
+                background: "white",
               }}
-            />
+            >
+              <option value="">Selecciona categoría…</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+
+            {/* ✅ Crear nueva categoría */}
+            <div style={{ display: "flex", gap: 10 }}>
+              <input
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                placeholder="Nueva categoría (opcional)"
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  border: "1px solid #e6eaf2",
+                  outline: "none",
+                  flex: 1,
+                }}
+              />
+              <button
+                type="button"
+                onClick={addCategory}
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 12,
+                  border: "1px solid #e6eaf2",
+                  background: "white",
+                  cursor: "pointer",
+                  fontWeight: 900,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                + Añadir
+              </button>
+            </div>
 
             <input
               value={form.price}

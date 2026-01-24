@@ -6,17 +6,16 @@ import { loadState, saveState } from "../utils/storage";
 import { createInitialState } from "../state/initialState";
 import { ensureProducts } from "../utils/ensureProducts";
 
-const stateRaw = loadState();
-const state = ensureProducts(stateRaw);
-if (stateRaw !== state) saveState(state); // guarda si se inicializó
-
 export default function Mesas() {
   const navigate = useNavigate();
 
-  // Cargar estado desde localStorage o crear uno nuevo
+  // Cargar estado desde localStorage o crear uno nuevo (asegurando products)
   const [appState, setAppState] = useState(() => {
     const saved = loadState();
-    return saved ?? createInitialState(12);
+    const base = saved ?? createInitialState(12);
+    const fixed = ensureProducts(base);
+    if (saved !== fixed) saveState(fixed);
+    return fixed;
   });
 
   // Guardar en localStorage cada vez que cambie
@@ -33,7 +32,7 @@ export default function Mesas() {
     navigate(`/mesas/${tableId}`);
   }
 
-  const tables = useMemo(() => appState.tables, [appState.tables]);
+  const tables = useMemo(() => appState.tables || [], [appState.tables]);
 
   return (
     <div className="mesasPage">
@@ -53,7 +52,6 @@ export default function Mesas() {
 
         <div className="mesasGrid">
           {tables.map((t) => {
-            // ✅ Leer metadata desde el pedido real
             const orderId = t.currentOrderId;
             const order = orderId ? appState.orders?.[orderId] : null;
 
@@ -79,9 +77,9 @@ export default function Mesas() {
 
                 {t.status === "occupied" && (
                   <div className="tableMeta">
-                    {timeLabel && <div>🕒 {timeLabel}</div>}
-                    {waiterName && <div>👤 {waiterName}</div>}
-                    {clientName && <div>🙋 {clientName}</div>}
+                    {timeLabel && <div> {timeLabel}</div>}
+                    {waiterName && <div> {waiterName}</div>}
+                    {clientName && <div> {clientName}</div>}
                   </div>
                 )}
               </button>
